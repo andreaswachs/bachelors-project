@@ -54,7 +54,9 @@ When done experimenting, you can shut down the docker containers and remove the 
 make c
 ```
 
-or ```sh
+or 
+
+```sh
 make cleanup
 ```
 
