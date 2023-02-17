@@ -32,6 +32,27 @@ or
 make setup
 ```
 
+### Attaching to the `isolated_actor`
+
+In order to verify that the custom domain resolves and that the isolated network doesn't have access to the public internet you need to attach to an instance of a shell on the `isolated_actor` container:
+
+```sh
+docker attach isolated_actor
+```
+
+Here you can then ping the `isolated_service_1` container:
+
+```sh
+/ # ping -c 2 semifreddo.yum
+PING semifreddo.yum (172.16.86.30) 56(84) bytes of data.
+64 bytes from isolated_service_1.isolated (172.16.86.30): icmp_seq=1 ttl=64 time=0.071 ms
+64 bytes from isolated_service_1.isolated (172.16.86.30): icmp_seq=2 ttl=64 time=0.063 ms
+
+--- semifreddo.yum ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1020ms
+rtt min/avg/max/mdev = 0.063/0.067/0.071/0.004 ms
+```
+
 ### Restarting the experiment
 
 If you've made changes and need to restart the experiment over again you can use:
