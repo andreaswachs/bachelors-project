@@ -1,0 +1,5 @@
+. {
+    file zonefile
+    errors         # show errors
+    log            # enable query logs
+}
