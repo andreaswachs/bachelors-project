@@ -1,5 +1,5 @@
-# Created by https://www.toptal.com/developers/gitignore/api/go,linux,macos,windows
-# Edit at https://www.toptal.com/developers/gitignore?templates=go,linux,macos,windows
+# Created by https://www.toptal.com/developers/gitignore/api/go,linux,macos,windows,vscode
+# Edit at https://www.toptal.com/developers/gitignore?templates=go,linux,macos,windows,vscode
 
 ### Go ###
 # If you prefer the allow list template instead of the deny list, see community template:
@@ -72,6 +72,8 @@ Temporary Items
 # iCloud generated files
 *.icloud
 
+#!! ERROR: vscode is undefined. Use list command to see defined gitignore types !!#
+
 ### Windows ###
 # Windows thumbnail cache files
 Thumbs.db
@@ -98,6 +100,13 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# End of https://www.toptal.com/developers/gitignore/api/go,linux,macos,windows
+# End of https://www.toptal.com/developers/gitignore/api/go,linux,macos,windows,vscode
 
+
+# Custom
+
+## The server binary
 server
+
+## Debugging configuration file
+launch.json
