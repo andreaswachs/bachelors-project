@@ -9,7 +9,7 @@ func TestGetUnusedSubnetNoSubnetsAreEqual(t *testing.T) {
 	subnets := make(map[string]bool)
 
 	for i := 0; i < 10001; i++ {
-		subnet, err := getIPBank().GetUnusedSubnet()
+		subnet, err := ipPool().GetUnusedSubnet()
 		if err != nil {
 			// we've depleted the subnet pool
 			if err == ErrEmptySubnetPool {
@@ -28,12 +28,12 @@ func TestGetUnusedSubnetNoSubnetsAreEqual(t *testing.T) {
 }
 
 func TestGetFreeIpWithinSubnet(t *testing.T) {
-	subnet, err := getIPBank().GetUnusedSubnet()
+	subnet, err := ipPool().GetUnusedSubnet()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ip, err := getIPBank().GetFreeIP(subnet)
+	ip, err := ipPool().GetFreeIP(subnet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,45 +49,45 @@ func TestGetFreeIpWithinSubnet(t *testing.T) {
 }
 
 func TestGetFreeIPErrorWhenInvalidSubnet(t *testing.T) {
-	_, err := getIPBank().GetFreeIP("123123124124:123123")
+	_, err := ipPool().GetFreeIP("123123124124:123123")
 	if err == nil {
 		t.Fatal("Expected error when getting ip from invalid subnet")
 	}
 }
 
 func TestGetFreeIPErrorWhenSubnetIsEmpty(t *testing.T) {
-	_, err := getIPBank().GetFreeIP("")
+	_, err := ipPool().GetFreeIP("")
 	if err == nil {
 		t.Fatal("Expected error when getting ip from empty subnet")
 	}
 }
 
 func TestFreeIp(t *testing.T) {
-	subnet, err := getIPBank().GetUnusedSubnet()
+	subnet, err := ipPool().GetUnusedSubnet()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ip, err := getIPBank().GetFreeIP(subnet)
+	ip, err := ipPool().GetFreeIP(subnet)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = getIPBank().FreeIP(ip)
+	err = ipPool().FreeIP(ip)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestFreeIpErrorWhenInvalidSubnet(t *testing.T) {
-	err := getIPBank().FreeIP("123123124124:123123")
+	err := ipPool().FreeIP("123123124124:123123")
 	if err == nil {
 		t.Fatal("Expected error when freeing invalid ip")
 	}
 }
 
 func TestFreeIpErrorWhenSubnetIsEmpty(t *testing.T) {
-	err := getIPBank().FreeIP("")
+	err := ipPool().FreeIP("")
 	if err == nil {
 		t.Fatal("Expected error when freeing empty ip")
 	}

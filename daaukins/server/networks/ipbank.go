@@ -14,47 +14,33 @@ const (
 
 var (
 	allowedLeftmostOctets = []int{172, 10}
-	ipBank                *IPBank
-)
+	ipBank                *IPPool
 
-var (
 	ErrEmptySubnetPool = fmt.Errorf("no more subnets available")
 )
 
-type IPBank struct {
+type IPPool struct {
 	subnetsInUse map[string]bool
 	ipsInUse     map[string]bool
 	freeIps      map[string][]int
 }
 
-func getIPBank() *IPBank {
+func ipPool() *IPPool {
 	if ipBank == nil {
-		ipBank = NewIPBank()
+		ipBank = initIPPool()
 	}
 
 	return ipBank
 }
 
-func NewIPBank() *IPBank {
-	return &IPBank{
+func initIPPool() *IPPool {
+	return &IPPool{
 		subnetsInUse: make(map[string]bool),
 		freeIps:      make(map[string][]int),
 	}
 }
 
-func generateNewSubnetList() []int {
-	subnets := make([]int, 0, 255)
-
-	for i := octetMinimum; i < octetMaximum; i++ {
-		subnets = append(subnets, i)
-	}
-
-	rand.Shuffle(len(subnets), func(i, j int) { subnets[i], subnets[j] = subnets[j], subnets[i] })
-
-	return subnets
-}
-
-func (ipbank *IPBank) FreeIP(ip string) error {
+func (ipbank *IPPool) FreeIP(ip string) error {
 	octets := strings.Split(ip, ".")
 	if len(octets) != 4 {
 		return fmt.Errorf("invalid ip format")
@@ -76,7 +62,7 @@ func (ipbank *IPBank) FreeIP(ip string) error {
 	return nil
 }
 
-func (ipbank *IPBank) GetFreeIP(subnet string) (string, error) {
+func (ipbank *IPPool) GetFreeIP(subnet string) (string, error) {
 	if _, ok := ipbank.freeIps[subnet]; !ok {
 		ipbank.freeIps[subnet] = generateNewSubnetList()
 	}
@@ -97,7 +83,7 @@ func (ipbank *IPBank) GetFreeIP(subnet string) (string, error) {
 
 // GetSubnet returns a random subnet that is not in use
 // this has the format "172.x.y.0/24" with the last octet missing
-func (ipbank *IPBank) GetUnusedSubnet() (string, error) {
+func (ipbank *IPPool) GetUnusedSubnet() (string, error) {
 	for safety := 0; safety < 10000; safety++ {
 
 		ip := fmt.Sprintf("%d.%d.%d.0/24",
@@ -121,4 +107,16 @@ func getRandomLeftmostOctet() int {
 
 func getRandomOctet() int {
 	return int(rand.Int31n(octetMaximum))
+}
+
+func generateNewSubnetList() []int {
+	subnets := make([]int, 0, 255)
+
+	for i := octetMinimum; i < octetMaximum; i++ {
+		subnets = append(subnets, i)
+	}
+
+	rand.Shuffle(len(subnets), func(i, j int) { subnets[i], subnets[j] = subnets[j], subnets[i] })
+
+	return subnets
 }
