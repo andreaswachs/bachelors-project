@@ -1,0 +1,4 @@
+challenges:
+  - id: free_flag
+    dns:
+    - freeflag.daaukins
