@@ -21,7 +21,7 @@ type ProvisionNetworkOptions struct {
 }
 
 func Provision(client *docker.Client, conf ProvisionNetworkOptions) (*Network, error) {
-	subnet, err := getIPBank().GetUnusedSubnet()
+	subnet, err := ipPool().GetUnusedSubnet()
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (n *Network) Connect(challenge *challenge.Challenge) error {
 		return fmt.Errorf("challenge is nil")
 	}
 
-	containerIP, err := getIPBank().GetFreeIP(n.subnet)
+	containerIP, err := ipPool().GetFreeIP(n.subnet)
 	if err != nil {
 		return err
 	}

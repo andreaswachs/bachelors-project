@@ -175,7 +175,7 @@ func TestConnectCanConnectContainerToNetwork(t *testing.T) {
 }
 
 func newProvisionNetworkOptions() (*ProvisionNetworkOptions, error) {
-	subnet, err := getIPBank().GetUnusedSubnet()
+	subnet, err := ipPool().GetUnusedSubnet()
 	if err != nil {
 		return nil, err
 	}
