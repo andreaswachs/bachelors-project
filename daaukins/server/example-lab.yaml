@@ -1,3 +1,5 @@
+name: Example lab
+
 challenges:
   - name: Free Flag
     challenge: free_flag
