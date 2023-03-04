@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/challenge"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/networks"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/store"
 	"gopkg.in/yaml.v3"
 )
@@ -26,6 +27,7 @@ type Lab struct {
 type lab struct {
 	name       string
 	challenges []*challenge.Challenge
+	network    *networks.Network
 }
 
 type labChallenge struct {
@@ -39,107 +41,81 @@ type labDTO struct {
 	Challenges []labChallenge `yaml:"challenges"`
 }
 
-func NewLab(path string) (*Lab, error) {
-	lab := &Lab{
-		labs: make(map[string]*lab),
+func Provision(path string) (lab, error) {
+	labDTO, err := load(path)
+	if err != nil {
+		return lab{}, err
 	}
 
-	if err := lab.load(path); err != nil {
-		return nil, err
+	if labDTO.Name == "" {
+		return lab{}, ErrorLabNameMissing
 	}
 
-	return lab, nil
+	if len(labDTO.Challenges) == 0 {
+		return lab{}, ErrorLabNoChallenges
+	}
+
+	network, err := networks.Provision(nil, networks.ProvisionNetworkOptions{})
+	if err != nil {
+		return lab{}, err
+	}
+
+	// Challenges that are provisioned but not started
+	challenges := make([]*challenge.Challenge, 0)
+	for _, labChallenge := range labDTO.Challenges {
+		if labChallenge.Name == "" {
+			return lab{}, ErrorChallengeNameEmpty
+		}
+
+		if labChallenge.Challenge == "" {
+			return lab{}, ErrorChallengeIDEmpty
+		}
+
+		if len(labChallenge.Dns) == 0 {
+			return lab{}, ErrorChallengeNoDNS
+		}
+
+		storedChallenge, err := store.WithStore().GetChallenge(labChallenge.Challenge)
+		if err != nil {
+			return lab{}, err
+		}
+
+		// TODO: insert docker client, DNSServers
+		newChallenge, err := challenge.Provision(nil, &challenge.ProvisionChallengeOptions{
+			Image:       storedChallenge.Image,
+			DNSServers:  nil,
+			DNSSettings: labChallenge.Dns,
+		})
+		if err != nil {
+			return lab{}, err
+		}
+
+		challenges = append(challenges, newChallenge)
+	}
+
+	return lab{
+		name:       labDTO.Name,
+		challenges: challenges,
+		network:    network,
+	}, nil
 }
 
-func (l *Lab) load(path string) error {
+func (l *Lab) Start() error {
+	// TODO
+	return nil
+}
+
+func load(path string) (labDTO, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		return labDTO{}, err
 	}
 
-	dto, err := loadLab(data)
+	var lab labDTO
+	err = yaml.Unmarshal(data, &lab)
 	if err != nil {
-		return err
-	}
-
-	if err = validateLabDTO(dto); err != nil {
-		return err
-	}
-
-	l.transferLab(dto)
-
-	return nil
-}
-
-func loadLab(data []byte) (*labDTO, error) {
-	dto := &labDTO{}
-	if err := yaml.Unmarshal(data, dto); err != nil {
-		return nil, err
-	}
-
-	return dto, nil
-}
-
-func validateLabDTO(dto *labDTO) error {
-	if dto.Name == "" {
-		return ErrorLabNameMissing
-	}
-
-	if len(dto.Challenges) == 0 {
-		return ErrorLabNoChallenges
-	}
-
-	for _, challenge := range dto.Challenges {
-		if err := validateChallenge(&challenge); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func validateChallenge(c *labChallenge) error {
-	if c.Name == "" {
-		return ErrorChallengeNameEmpty
-	}
-
-	if c.Challenge == "" {
-		return ErrorChallengeIDEmpty
-	}
-
-	if len(c.Dns) == 0 {
-		return ErrorChallengeNoDNS
-	}
-
-	return nil
-}
-
-func transferLab(dto *labDTO) (*lab, error) {
-	lab := &lab{
-		name:       dto.Name,
-		challenges: make([]*challenge.Challenge, 0),
-	}
-
-	for _, dtoChallenge := range dto.Challenges {
-		c, err := transferChallenge(&dtoChallenge)
-		if err != nil {
-			return nil, err
-		}
-		lab.challenges = append(lab.challenges, c)
+		return labDTO{}, err
 	}
 
 	return lab, nil
-}
-
-func transferChallenge(dto *labChallenge) (*challenge.Challenge, error) {
-	storedChallenge, err := store.WithStore().GetChallenge(dto.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	return challenge.Provision(nil, &challenge.ProvisionChallengeOptions{
-		DNSServers: "TODO", // this points to the CoreDNS service
-		Image:      storedChallenge.Image,
-	})
-
 }
