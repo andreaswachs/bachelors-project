@@ -105,6 +105,14 @@ func (l *Lab) Start() error {
 	return nil
 }
 
+func (l *lab) GetName() string {
+	return l.name
+}
+
+func (l *lab) GetChallenges() []*challenge.Challenge {
+	return l.challenges
+}
+
 func load(path string) (labDTO, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
