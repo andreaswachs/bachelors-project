@@ -8,9 +8,9 @@ import (
 )
 
 type ProvisionChallengeOptions struct {
-	Image      string
-	DNSServers []string
-	Network    string
+	Image       string
+	DNSServers  []string
+	DNSSettings []string
 }
 
 type Challenge struct {
@@ -19,6 +19,7 @@ type Challenge struct {
 	containerConfiguration   *docker.CreateContainerOptions
 	provisionedConfiguration *ProvisionChallengeOptions
 	ip                       string
+	dnsSettings              []string
 }
 
 // Provisions creates and prepares the configuration for the challenge.
@@ -46,6 +47,7 @@ func Provision(client *docker.Client, conf *ProvisionChallengeOptions) (*Challen
 		client:                   client,
 		provisionedConfiguration: conf,
 		containerConfiguration:   containerConfiguration,
+		dnsSettings:              conf.DNSSettings,
 	}, nil
 }
 
@@ -101,6 +103,14 @@ func (c *Challenge) GetIP() string {
 
 func (c *Challenge) SetIP(ip string) {
 	c.ip = ip
+}
+
+func (c *Challenge) GetDNS() []string {
+	if c.dnsSettings == nil {
+		return []string{}
+	}
+
+	return c.dnsSettings
 }
 
 func handleErr(c *Challenge) error {
