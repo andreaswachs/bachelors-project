@@ -8,11 +8,11 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/challenge"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 )
 
 type Network struct {
 	network *docker.Network
-	client  *docker.Client
 	subnet  string
 }
 
@@ -20,14 +20,13 @@ type ProvisionNetworkOptions struct {
 	Subnet string
 }
 
-func Provision(client *docker.Client, conf ProvisionNetworkOptions) (*Network, error) {
+func Provision(conf ProvisionNetworkOptions) (*Network, error) {
 	subnet, err := ipPool().GetUnusedSubnet()
 	if err != nil {
 		return nil, err
 	}
 
 	return &Network{
-		client: client,
 		subnet: subnet}, nil
 }
 
@@ -38,7 +37,7 @@ func (n *Network) Create() error {
 
 	name := fmt.Sprintf("daaukins-%s", uuid.New().String())
 
-	network, err := n.client.CreateNetwork(docker.CreateNetworkOptions{
+	network, err := virtual.DockerClient().CreateNetwork(docker.CreateNetworkOptions{
 		Name:   name,
 		Driver: "macvlan",
 		IPAM: &docker.IPAMOptions{
@@ -60,7 +59,7 @@ func (n *Network) Create() error {
 }
 
 func (n *Network) Remove() error {
-	err := n.client.RemoveNetwork(n.network.ID)
+	err := virtual.DockerClient().RemoveNetwork(n.network.ID)
 	if err != nil {
 		return err
 	}
@@ -78,7 +77,7 @@ func (n *Network) Connect(challenge *challenge.Challenge) error {
 		return err
 	}
 
-	err = n.client.ConnectNetwork(n.network.ID, docker.NetworkConnectionOptions{
+	err = virtual.DockerClient().ConnectNetwork(n.network.ID, docker.NetworkConnectionOptions{
 		Container: challenge.GetContainerID(),
 		EndpointConfig: &docker.EndpointConfig{
 			IPAMConfig: &docker.EndpointIPAMConfig{
@@ -100,7 +99,7 @@ func (n *Network) Disconnect(challenge *challenge.Challenge) error {
 		return fmt.Errorf("challenge is nil")
 	}
 
-	err := n.client.DisconnectNetwork(n.network.ID, docker.NetworkConnectionOptions{
+	err := virtual.DockerClient().DisconnectNetwork(n.network.ID, docker.NetworkConnectionOptions{
 		Container: challenge.GetContainerID(),
 	})
 
