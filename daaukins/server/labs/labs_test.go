@@ -2,7 +2,11 @@ package labs
 
 import (
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
+
+	"github.com/andreaswachs/bachelors-project/daaukins/server/store"
 )
 
 type preppedYamlConfig uint8
@@ -10,6 +14,11 @@ type preppedYamlConfig uint8
 const (
 	goodYaml preppedYamlConfig = iota
 	badYaml
+)
+
+var (
+	_, b, _, _ = runtime.Caller(0)
+	basepath   = filepath.Dir(b)
 )
 
 func TestLoad(t *testing.T) {
@@ -101,8 +110,25 @@ func TestLoadGivenBadYaml(t *testing.T) {
 // }
 
 func TestStart(t *testing.T) {
-	// TODO
-	t.Fatalf("not implemented")
+	// Loads the test store
+	if err := store.Load(getTestResource("store.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	// Load the test lab
+	lab, err := Provision(getTestResource("lab.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Start the lab
+	// TODO: readd
+	// defer lab.Remove()
+
+	err = lab.Start()
+
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func prepYamlConfigFile(yamlSetting preppedYamlConfig, t *testing.T) (string, error) {
@@ -134,4 +160,8 @@ challenges:
 	}
 
 	return file.Name(), nil
+}
+
+func getTestResource(name string) string {
+	return filepath.Join(basepath, "..", "test_resources", name)
 }

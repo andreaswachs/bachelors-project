@@ -7,6 +7,7 @@ import (
 	"github.com/andreaswachs/bachelors-project/daaukins/server/challenge"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/networks"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/store"
+	docker "github.com/fsouza/go-dockerclient"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,9 +24,11 @@ var (
 
 // lab is the data bearing struct for a lab
 type lab struct {
-	name       string
-	challenges []*challenge.Challenge
-	network    *networks.Network
+	name        string
+	challenges  []*challenge.Challenge
+	dhcpService *networkService
+	dnsService  *networkService
+	network     *networks.Network
 }
 
 type labChallenge struct {
@@ -39,9 +42,14 @@ type labDTO struct {
 	Challenges []labChallenge `yaml:"challenges"`
 }
 
+type networkService struct {
+	container      *docker.Container
+	filesToCleanup []string
+}
+
 func init() {
 	// Ensure labs is initiated to an empty slice
-	labs := make(map[string]*lab, 0)
+	labs = make(map[string]*lab, 0)
 }
 
 // WithName returns a lab with a given name. If the lab does not exist, an error is returned
@@ -72,6 +80,8 @@ func Provision(path string) (lab, error) {
 		return lab{}, err
 	}
 
+	zoneFileEntries := make([]zoneFileEntry, 0)
+
 	// Challenges that are provisioned but not started
 	challenges := make([]*challenge.Challenge, 0)
 	for _, labChallenge := range labDTO.Challenges {
@@ -101,6 +111,13 @@ func Provision(path string) (lab, error) {
 			return lab{}, err
 		}
 
+		for _, dns := range labChallenge.Dns {
+			zoneFileEntries = append(zoneFileEntries, zoneFileEntry{
+				hostname: dns,
+				ip:       "", // TODO
+			})
+		}
+
 		challenges = append(challenges, newChallenge)
 	}
 
@@ -117,7 +134,9 @@ func Provision(path string) (lab, error) {
 
 // Start starts the lab by starting all the challenges and connecting them to the isolated network
 func (l *lab) Start() error {
-	l.network.Create()
+	if err := l.network.Create(); err != nil {
+		return err
+	}
 
 	for _, challenge := range l.challenges {
 
