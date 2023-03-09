@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 )
 
@@ -33,15 +34,17 @@ type storeDTO struct {
 	Challenges []ChallengeTemplate `yaml:"challenges"`
 }
 
-func WithStore() *Store {
-	if store == nil {
-		store = initStore()
+func init() {
+	store = &Store{
+		challenges: make(map[string]ChallengeTemplate),
 	}
 
-	return store
+	if err := Load("store.yaml"); err != nil {
+		log.Err(err).Msg("failed to load store from default path \"store.yaml\"")
+	}
 }
 
-func (s *Store) Load(path string) error {
+func Load(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -56,31 +59,25 @@ func (s *Store) Load(path string) error {
 		return err
 	}
 
-	s.transferChallenges(dto)
+	transferChallenges(dto)
 
 	return nil
 }
 
-func (s *Store) GetChallenge(name string) (ChallengeTemplate, error) {
-	if _, ok := s.challenges[name]; !ok {
+func GetChallenge(name string) (ChallengeTemplate, error) {
+	if _, ok := store.challenges[name]; !ok {
 		return ChallengeTemplate{}, ErrorChallengeNotFound
 	}
 
-	return s.challenges[name], nil
+	return store.challenges[name], nil
 }
 
-func (s *Store) ChallengeExists(name string) bool {
-	if _, ok := s.challenges[name]; !ok {
+func ChallengeExists(name string) bool {
+	if _, ok := store.challenges[name]; !ok {
 		return false
 	}
 
 	return true
-}
-
-func (s *Store) transferChallenges(dto *storeDTO) {
-	for _, c := range dto.Challenges {
-		s.challenges[c.Name] = c
-	}
 }
 
 func loadStore(data []byte) (*storeDTO, error) {
@@ -94,9 +91,9 @@ func loadStore(data []byte) (*storeDTO, error) {
 	return &dto, nil
 }
 
-func initStore() *Store {
-	return &Store{
-		challenges: make(map[string]ChallengeTemplate),
+func transferChallenges(dto *storeDTO) {
+	for _, c := range dto.Challenges {
+		store.challenges[c.Name] = c
 	}
 }
 

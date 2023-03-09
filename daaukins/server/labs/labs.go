@@ -87,7 +87,7 @@ func Provision(path string) (lab, error) {
 			return lab{}, ErrorChallengeNoDNS
 		}
 
-		storedChallenge, err := store.WithStore().GetChallenge(labChallenge.Challenge)
+		storedChallenge, err := store.GetChallenge(labChallenge.Challenge)
 		if err != nil {
 			return lab{}, err
 		}
