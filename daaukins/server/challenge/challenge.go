@@ -3,6 +3,7 @@ package challenge
 import (
 	"fmt"
 
+	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/google/uuid"
 )
@@ -15,7 +16,6 @@ type ProvisionChallengeOptions struct {
 
 type Challenge struct {
 	container                *docker.Container
-	client                   *docker.Client
 	containerConfiguration   *docker.CreateContainerOptions
 	provisionedConfiguration *ProvisionChallengeOptions
 	ip                       string
@@ -24,13 +24,9 @@ type Challenge struct {
 
 // Provisions creates and prepares the configuration for the challenge.
 // It does not start the challenge container itself. You need to call Start() for that.
-func Provision(client *docker.Client, conf *ProvisionChallengeOptions) (*Challenge, error) {
+func Provision(conf *ProvisionChallengeOptions) (*Challenge, error) {
 	if err := validateProvisionChallengeOptions(conf); err != nil {
 		return nil, err
-	}
-
-	if client == nil {
-		return nil, fmt.Errorf("client is nil")
 	}
 
 	containerConfiguration := &docker.CreateContainerOptions{
@@ -44,7 +40,6 @@ func Provision(client *docker.Client, conf *ProvisionChallengeOptions) (*Challen
 	}
 
 	return &Challenge{
-		client:                   client,
 		provisionedConfiguration: conf,
 		containerConfiguration:   containerConfiguration,
 		dnsSettings:              conf.DNSSettings,
@@ -61,7 +56,7 @@ func (c *Challenge) Start() error {
 		return err
 	}
 
-	container, err := c.client.CreateContainer(*c.containerConfiguration)
+	container, err := virtual.DockerClient().CreateContainer(*c.containerConfiguration)
 	if err != nil {
 		return err
 	}
@@ -75,7 +70,7 @@ func (c *Challenge) Remove() error {
 		return err
 	}
 
-	err := c.client.RemoveContainer(docker.RemoveContainerOptions{
+	err := virtual.DockerClient().RemoveContainer(docker.RemoveContainerOptions{
 		ID: c.container.ID,
 	})
 	if err != nil {
@@ -116,10 +111,6 @@ func (c *Challenge) GetDNS() []string {
 func handleErr(c *Challenge) error {
 	if c == nil {
 		return fmt.Errorf("challenge is nil")
-	}
-
-	if c.client == nil {
-		return fmt.Errorf("client is nil")
 	}
 
 	return nil
