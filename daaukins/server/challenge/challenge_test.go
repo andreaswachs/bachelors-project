@@ -3,40 +3,31 @@ package challenge
 import (
 	"testing"
 
+	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 	docker "github.com/fsouza/go-dockerclient"
 )
 
 func TestProvisionChallengeCanProvisionChallenge(t *testing.T) {
-	client, err := docker.NewClientFromEnv()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	configuration := &ProvisionChallengeOptions{
 		Image: "alpine",
 		DNSServers: []string{
 			"8.8.8.8",
 		}}
 
-	_, err = Provision(client, configuration)
+	_, err := Provision(configuration)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestStartChallengeCanStartProvisionedChallenge(t *testing.T) {
-	client, err := docker.NewClientFromEnv()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	configuration := &ProvisionChallengeOptions{
 		Image: "alpine",
 		DNSServers: []string{
 			"8.8.8.8",
 		}}
 
-	challenge, err := Provision(client, configuration)
+	challenge, err := Provision(configuration)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +40,7 @@ func TestStartChallengeCanStartProvisionedChallenge(t *testing.T) {
 	}
 
 	// Check to see if the docker container is running
-	_, err = client.InspectContainerWithOptions(
+	_, err = virtual.DockerClient().InspectContainerWithOptions(
 		docker.InspectContainerOptions{
 			ID: challenge.container.ID,
 		})
