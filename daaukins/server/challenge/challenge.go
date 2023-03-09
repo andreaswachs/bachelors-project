@@ -61,6 +61,15 @@ func (c *Challenge) Start() error {
 		return err
 	}
 
+	err = virtual.DockerClient().StartContainer(container.ID, &docker.HostConfig{
+		Memory:    128 * 1024 * 1024, // TODO: pass this from store?
+		CPUPeriod: 100000,
+	})
+
+	if err != nil {
+		return err
+	}
+
 	c.container = container
 	return nil
 }
@@ -70,7 +79,12 @@ func (c *Challenge) Remove() error {
 		return err
 	}
 
-	err := virtual.DockerClient().RemoveContainer(docker.RemoveContainerOptions{
+	err := virtual.DockerClient().StopContainer(c.container.ID, 5)
+	if err != nil {
+		return err
+	}
+
+	err = virtual.DockerClient().RemoveContainer(docker.RemoveContainerOptions{
 		ID: c.container.ID,
 	})
 	if err != nil {
