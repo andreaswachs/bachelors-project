@@ -11,17 +11,15 @@ import (
 )
 
 var (
+	labs map[string]*lab
+
 	ErrorLabNameMissing     = fmt.Errorf("lab name is missing")
 	ErrorLabNoChallenges    = fmt.Errorf("lab has no challenges")
 	ErrorChallengeNameEmpty = fmt.Errorf("challenge name is empty")
 	ErrorChallengeIDEmpty   = fmt.Errorf("challenge id is empty")
 	ErrorChallengeNoDNS     = fmt.Errorf("challenge has no dns servers")
+	ErrorLabDoesntExist     = fmt.Errorf("lab does not exist")
 )
-
-// Lab is the front facing data structure that is used to interact with labs
-type Lab struct {
-	labs map[string]*lab
-}
 
 // lab is the data bearing struct for a lab
 type lab struct {
@@ -39,6 +37,20 @@ type labChallenge struct {
 type labDTO struct {
 	Name       string         `yaml:"name"`
 	Challenges []labChallenge `yaml:"challenges"`
+}
+
+func init() {
+	// Ensure labs is initiated to an empty slice
+	labs := make(map[string]*lab, 0)
+}
+
+// WithName returns a lab with a given name. If the lab does not exist, an error is returned
+func WithName(name string) (*lab, error) {
+	if labs[name] == nil {
+		return nil, fmt.Errorf("%w: %s", ErrorLabDoesntExist, name)
+	}
+
+	return labs[name], nil
 }
 
 func Provision(path string) (lab, error) {
@@ -80,10 +92,9 @@ func Provision(path string) (lab, error) {
 			return lab{}, err
 		}
 
-		// TODO: insert docker client, DNSServers
 		newChallenge, err := challenge.Provision(&challenge.ProvisionChallengeOptions{
 			Image:       storedChallenge.Image,
-			DNSServers:  nil,
+			DNSServers:  []string{network.GetDNSAddr()},
 			DNSSettings: labChallenge.Dns,
 		})
 		if err != nil {
@@ -93,15 +104,58 @@ func Provision(path string) (lab, error) {
 		challenges = append(challenges, newChallenge)
 	}
 
-	return lab{
+	thisLab := lab{
 		name:       labDTO.Name,
 		challenges: challenges,
 		network:    network,
-	}, nil
+	}
+
+	labs[labDTO.Name] = &thisLab
+
+	return thisLab, nil
 }
 
-func (l *Lab) Start() error {
-	// TODO
+// Start starts the lab by starting all the challenges and connecting them to the isolated network
+func (l *lab) Start() error {
+	l.network.Create()
+
+	for _, challenge := range l.challenges {
+
+		// start the challenge, stop if an error occurs and remove all challenges
+		if err := challenge.Start(); err != nil {
+			for _, challenge := range l.challenges {
+				challenge.Remove()
+			}
+
+			return err
+		}
+
+		// Connect the newly started challenge to the isolated network
+		if err := l.network.Connect(challenge); err != nil {
+
+			// If a challenge could not be connected, lets just remove it and continue
+			challenge.Remove()
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Remove removes the lab by removing all the challenges and then the isolated network
+func (l *lab) Remove() error {
+	for _, challenge := range l.challenges {
+		if err := challenge.Remove(); err != nil {
+			return err
+		}
+	}
+
+	if err := l.network.Remove(); err != nil {
+		return err
+	}
+
+	delete(labs, l.name)
+
 	return nil
 }
 
