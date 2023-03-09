@@ -95,10 +95,6 @@ func TestLoadStoreBadYaml(t *testing.T) {
 }
 
 func TestTransferChallenges(t *testing.T) {
-	store := &Store{
-		challenges: make(map[string]ChallengeTemplate),
-	}
-
 	dto := &storeDTO{
 		Challenges: []ChallengeTemplate{
 			{
@@ -116,7 +112,7 @@ func TestTransferChallenges(t *testing.T) {
 		},
 	}
 
-	store.transferChallenges(dto)
+	transferChallenges(dto)
 
 	type test struct {
 		name      string
@@ -175,20 +171,14 @@ func TestTransferChallenges(t *testing.T) {
 	}
 }
 
-func TestInitStore(t *testing.T) {
-	store := initStore()
-
+func TestInit(t *testing.T) {
 	if store.challenges == nil {
 		t.Error("challenges should not be nil")
-	}
-
-	if len(store.challenges) != 0 {
-		t.Errorf("expected 0 challenges, got %d", len(store.challenges))
 	}
 }
 
 func TestGetChallenge(t *testing.T) {
-	store := &Store{
+	store = &Store{
 		challenges: map[string]ChallengeTemplate{
 			"challenge1": {
 				Name:   "challenge1",
@@ -252,7 +242,7 @@ func TestGetChallenge(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			challenge, err := store.GetChallenge(tt.challenge)
+			challenge, err := GetChallenge(tt.challenge)
 			if err != nil {
 				t.Errorf("unexpected error: %s", err)
 			}
@@ -262,20 +252,8 @@ func TestGetChallenge(t *testing.T) {
 	}
 }
 
-func TestWithStore(t *testing.T) {
-	store := WithStore()
-
-	if store == nil {
-		t.Error("store should not be nil")
-	}
-
-	if store.challenges == nil {
-		t.Error("challenges should not be nil")
-	}
-}
-
 func TestChallengeExists(t *testing.T) {
-	store := &Store{
+	store = &Store{
 		challenges: map[string]ChallengeTemplate{
 			"challenge1": {
 				Name:   "challenge1",
@@ -330,7 +308,7 @@ func TestChallengeExists(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			exists := store.ChallengeExists(tt.challenge)
+			exists := ChallengeExists(tt.challenge)
 			tt.predicate(t, exists)
 		})
 	}
@@ -365,9 +343,7 @@ challenges:
 		t.Fatal(err)
 	}
 
-	store := WithStore()
-
-	if err := store.Load(tmpfile.Name()); err != nil {
+	if err := Load(tmpfile.Name()); err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
 
@@ -433,9 +409,7 @@ challenges:
 		t.Fatal(err)
 	}
 
-	store := WithStore()
-
-	if err := store.Load(tmpfile.Name()); err == nil {
+	if err := Load(tmpfile.Name()); err == nil {
 		t.Error("expected error, got nil")
 	}
 }
