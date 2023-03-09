@@ -100,6 +100,11 @@ func TestLoadGivenBadYaml(t *testing.T) {
 //
 // }
 
+func TestStart(t *testing.T) {
+	// TODO
+	t.Fatalf("not implemented")
+}
+
 func prepYamlConfigFile(yamlSetting preppedYamlConfig, t *testing.T) (string, error) {
 	var yamlConfig string
 
