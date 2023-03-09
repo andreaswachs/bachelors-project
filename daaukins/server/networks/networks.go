@@ -77,6 +77,8 @@ func (n *Network) Connect(challenge *challenge.Challenge) error {
 		return err
 	}
 
+	challenge.SetIP(containerIP)
+
 	err = virtual.DockerClient().ConnectNetwork(n.network.ID, docker.NetworkConnectionOptions{
 		Container: challenge.GetContainerID(),
 		EndpointConfig: &docker.EndpointConfig{
