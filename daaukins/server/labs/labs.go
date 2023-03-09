@@ -55,7 +55,7 @@ func Provision(path string) (lab, error) {
 		return lab{}, ErrorLabNoChallenges
 	}
 
-	network, err := networks.Provision(nil, networks.ProvisionNetworkOptions{})
+	network, err := networks.Provision(networks.ProvisionNetworkOptions{})
 	if err != nil {
 		return lab{}, err
 	}
@@ -81,7 +81,7 @@ func Provision(path string) (lab, error) {
 		}
 
 		// TODO: insert docker client, DNSServers
-		newChallenge, err := challenge.Provision(nil, &challenge.ProvisionChallengeOptions{
+		newChallenge, err := challenge.Provision(&challenge.ProvisionChallengeOptions{
 			Image:       storedChallenge.Image,
 			DNSServers:  nil,
 			DNSSettings: labChallenge.Dns,
@@ -120,8 +120,7 @@ func load(path string) (labDTO, error) {
 	}
 
 	var lab labDTO
-	err = yaml.Unmarshal(data, &lab)
-	if err != nil {
+	if err = yaml.Unmarshal(data, &lab); err != nil {
 		return labDTO{}, err
 	}
 
