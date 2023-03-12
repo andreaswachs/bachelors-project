@@ -7,6 +7,7 @@ import (
 	"github.com/andreaswachs/bachelors-project/daaukins/server/challenge"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/networks"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/store"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 	docker "github.com/fsouza/go-dockerclient"
 	"gopkg.in/yaml.v3"
 )
@@ -80,8 +81,6 @@ func Provision(path string) (lab, error) {
 		return lab{}, err
 	}
 
-	zoneFileEntries := make([]zoneFileEntry, 0)
-
 	// Challenges that are provisioned but not started
 	challenges := make([]*challenge.Challenge, 0)
 	for _, labChallenge := range labDTO.Challenges {
@@ -111,13 +110,6 @@ func Provision(path string) (lab, error) {
 			return lab{}, err
 		}
 
-		for _, dns := range labChallenge.Dns {
-			zoneFileEntries = append(zoneFileEntries, zoneFileEntry{
-				hostname: dns,
-				ip:       "", // TODO
-			})
-		}
-
 		challenges = append(challenges, newChallenge)
 	}
 
@@ -138,6 +130,8 @@ func (l *lab) Start() error {
 		return err
 	}
 
+	zoneFileEntries := make([]zoneFileEntry, 0)
+
 	for _, challenge := range l.challenges {
 
 		// start the challenge, stop if an error occurs and remove all challenges
@@ -156,7 +150,50 @@ func (l *lab) Start() error {
 			challenge.Remove()
 			return err
 		}
+
+		for _, hostname := range challenge.GetDNS() {
+			zoneFileEntries = append(zoneFileEntries, zoneFileEntry{
+				hostname: hostname,
+				ip:       challenge.GetIP(),
+			})
+		}
 	}
+
+	// Provision and start the DNS service
+	dnsService, err := provisionDNS(&provisionDNSOptions{
+		zoneFileEntries: zoneFileEntries,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err = l.network.ConnectDNS(dnsService.container); err != nil {
+		return err
+	}
+
+	dhcpService, err := provisionDHCP(&provisionDHCPOptions{
+		DNSAddr:     l.network.GetDNSAddr(),
+		Subnet:      l.network.GetSubnet(),
+		NetworkMode: l.network.GetName(),
+	})
+	if err != nil {
+		return err
+	}
+
+	if err = l.network.ConnectDHCP(dhcpService.container); err != nil {
+		return err
+	}
+
+	if err = virtual.DockerClient().StartContainer(dhcpService.container.ID, nil); err != nil {
+		return err
+	}
+
+	if err = virtual.DockerClient().StartContainer(dnsService.container.ID, nil); err != nil {
+		return err
+	}
+
+	l.dhcpService = dhcpService
+	l.dnsService = dnsService
 
 	return nil
 }

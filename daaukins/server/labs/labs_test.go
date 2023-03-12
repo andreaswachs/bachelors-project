@@ -1,12 +1,15 @@
 package labs
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/store"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
+	docker "github.com/fsouza/go-dockerclient"
 )
 
 type preppedYamlConfig uint8
@@ -121,13 +124,25 @@ func TestStart(t *testing.T) {
 	}
 
 	// Start the lab
-	// TODO: readd
 	// defer lab.Remove()
 
 	err = lab.Start()
-
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if err = verifyContainerRunning(lab.dhcpService.container.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = verifyContainerRunning(lab.dnsService.container.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, challenge := range lab.challenges {
+		if err = verifyContainerRunning(challenge.GetContainerID()); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -164,4 +179,21 @@ challenges:
 
 func getTestResource(name string) string {
 	return filepath.Join(basepath, "..", "test_resources", name)
+}
+
+func verifyContainerRunning(ID string) error {
+	container, err := virtual.DockerClient().InspectContainerWithOptions(
+		docker.InspectContainerOptions{
+			ID: ID,
+		})
+
+	if err != nil {
+		return err
+	}
+
+	if !container.State.Running {
+		return fmt.Errorf("container %s is not running", ID)
+	}
+
+	return nil
 }
