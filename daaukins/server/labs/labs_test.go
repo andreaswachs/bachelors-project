@@ -1,8 +1,15 @@
 package labs
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
+
+	"github.com/andreaswachs/bachelors-project/daaukins/server/store"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
+	docker "github.com/fsouza/go-dockerclient"
 )
 
 type preppedYamlConfig uint8
@@ -10,6 +17,11 @@ type preppedYamlConfig uint8
 const (
 	goodYaml preppedYamlConfig = iota
 	badYaml
+)
+
+var (
+	_, b, _, _ = runtime.Caller(0)
+	basepath   = filepath.Dir(b)
 )
 
 func TestLoad(t *testing.T) {
@@ -100,6 +112,40 @@ func TestLoadGivenBadYaml(t *testing.T) {
 //
 // }
 
+func TestStart(t *testing.T) {
+	// Loads the test store
+	if err := store.Load(getTestResource("store.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	// Load the test lab
+	lab, err := Provision(getTestResource("lab.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Start the lab
+	// defer lab.Remove()
+
+	err = lab.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = verifyContainerRunning(lab.dhcpService.container.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = verifyContainerRunning(lab.dnsService.container.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, challenge := range lab.challenges {
+		if err = verifyContainerRunning(challenge.GetContainerID()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func prepYamlConfigFile(yamlSetting preppedYamlConfig, t *testing.T) (string, error) {
 	var yamlConfig string
 
@@ -129,4 +175,25 @@ challenges:
 	}
 
 	return file.Name(), nil
+}
+
+func getTestResource(name string) string {
+	return filepath.Join(basepath, "..", "test_resources", name)
+}
+
+func verifyContainerRunning(ID string) error {
+	container, err := virtual.DockerClient().InspectContainerWithOptions(
+		docker.InspectContainerOptions{
+			ID: ID,
+		})
+
+	if err != nil {
+		return err
+	}
+
+	if !container.State.Running {
+		return fmt.Errorf("container %s is not running", ID)
+	}
+
+	return nil
 }

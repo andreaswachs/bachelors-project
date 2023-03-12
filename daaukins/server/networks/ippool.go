@@ -85,11 +85,11 @@ func (ipbank *IPPool) GetFreeIP(subnet string) (string, error) {
 // this has the format "172.x.y.0/24" with the last octet missing
 func (ipbank *IPPool) GetUnusedSubnet() (string, error) {
 	for safety := 0; safety < 10000; safety++ {
-
+		leftmostOctet := getRandomLeftmostOctet()
 		ip := fmt.Sprintf("%d.%d.%d.0/24",
-			getRandomLeftmostOctet(),
-			getRandomOctet(),
-			getRandomOctet())
+			leftmostOctet,
+			getRandomOctet(leftmostOctet),
+			getRandomOctet(-1)) // Yeah this is a hack, but it works..??
 
 		if _, ok := ipbank.subnetsInUse[ip]; !ok {
 			ipbank.subnetsInUse[ip] = true
@@ -105,8 +105,15 @@ func getRandomLeftmostOctet() int {
 	return allowedLeftmostOctets[index]
 }
 
-func getRandomOctet() int {
-	return int(rand.Int31n(octetMaximum))
+func getRandomOctet(leftmostOctet int) int {
+	switch leftmostOctet {
+	case 172:
+		return rand.Intn(16) + 16
+	case 10:
+		return rand.Intn(255)
+	}
+
+	return rand.Intn(octetMaximum)
 }
 
 func generateNewSubnetList() []int {

@@ -4,23 +4,18 @@ import (
 	"testing"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/challenge"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 	docker "github.com/fsouza/go-dockerclient"
 )
 
 func TestCreateCanCreateNetwork(t *testing.T) {
-	// Create a new docker client
-	client, err := docker.NewClientFromEnv()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	config, err := newProvisionNetworkOptions()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Provision the new network
-	network, err := Provision(client, *config)
+	network, err := Provision(*config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,19 +31,19 @@ func TestCreateCanCreateNetwork(t *testing.T) {
 	}
 
 	// Check if the network is created
-	_, err = client.NetworkInfo(network.GetNetworkID())
+	_, err = virtual.DockerClient().NetworkInfo(network.GetNetworkID())
 	if err != nil {
 		t.Fatal("network is not created")
 	}
 
 	// Remove the network
-	err = client.RemoveNetwork(network.GetNetworkID())
+	err = virtual.DockerClient().RemoveNetwork(network.GetNetworkID())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Check if the network is removed
-	_, err = client.NetworkInfo(network.GetNetworkID())
+	_, err = virtual.DockerClient().NetworkInfo(network.GetNetworkID())
 	if err == nil {
 		t.Fatal("network is not removed. You need to do this manually, sorry")
 	}
@@ -56,19 +51,13 @@ func TestCreateCanCreateNetwork(t *testing.T) {
 
 // Testing the Remove function
 func TestRemoveCanRemoveCreatedNetwork(t *testing.T) {
-	// Create a new docker client
-	client, err := docker.NewClientFromEnv()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	config, err := newProvisionNetworkOptions()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Create a new network
-	network, err := Provision(client, *config)
+	network, err := Provision(*config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,26 +79,20 @@ func TestRemoveCanRemoveCreatedNetwork(t *testing.T) {
 	}
 
 	// Check if the network is removed
-	_, err = client.NetworkInfo(network.GetNetworkID())
+	_, err = virtual.DockerClient().NetworkInfo(network.GetNetworkID())
 	if err == nil {
 		t.Fatal("network is not removed")
 	}
 }
 
 func TestConnectCanConnectContainerToNetwork(t *testing.T) {
-	// Create a new docker client
-	client, err := docker.NewClientFromEnv()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	config, err := newProvisionNetworkOptions()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Create a new network
-	network, err := Provision(client, *config)
+	network, err := Provision(*config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +101,7 @@ func TestConnectCanConnectContainerToNetwork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer client.RemoveNetwork(network.GetNetworkID())
+	defer virtual.DockerClient().RemoveNetwork(network.GetNetworkID())
 
 	// Check if the network is not nil
 	if network == nil {
@@ -133,7 +116,7 @@ func TestConnectCanConnectContainerToNetwork(t *testing.T) {
 	}
 
 	// Create configuration for a new challenge
-	challenge, err := challenge.Provision(client, challengeConf)
+	challenge, err := challenge.Provision(challengeConf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +136,7 @@ func TestConnectCanConnectContainerToNetwork(t *testing.T) {
 	}
 
 	// Check if the challenge is connected to the network
-	inspectedContainer, err := client.InspectContainerWithOptions(
+	inspectedContainer, err := virtual.DockerClient().InspectContainerWithOptions(
 		docker.InspectContainerOptions{
 			ID: challenge.GetContainerID(),
 		})
@@ -166,7 +149,7 @@ func TestConnectCanConnectContainerToNetwork(t *testing.T) {
 	}
 
 	// Disconnect the challenge from the network
-	err = client.DisconnectNetwork(network.GetNetworkID(), docker.NetworkConnectionOptions{
+	err = virtual.DockerClient().DisconnectNetwork(network.GetNetworkID(), docker.NetworkConnectionOptions{
 		Container: challenge.GetContainerID(),
 	})
 	if err != nil {

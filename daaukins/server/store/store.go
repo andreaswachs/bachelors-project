@@ -66,7 +66,7 @@ func Load(path string) error {
 
 func GetChallenge(name string) (ChallengeTemplate, error) {
 	if _, ok := store.challenges[name]; !ok {
-		return ChallengeTemplate{}, ErrorChallengeNotFound
+		return ChallengeTemplate{}, fmt.Errorf("%w: %s", ErrorChallengeNotFound, name)
 	}
 
 	return store.challenges[name], nil
@@ -93,7 +93,7 @@ func loadStore(data []byte) (*storeDTO, error) {
 
 func transferChallenges(dto *storeDTO) {
 	for _, c := range dto.Challenges {
-		store.challenges[c.Name] = c
+		store.challenges[c.Id] = c
 	}
 }
 

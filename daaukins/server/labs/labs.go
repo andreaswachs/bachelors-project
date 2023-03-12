@@ -7,27 +7,29 @@ import (
 	"github.com/andreaswachs/bachelors-project/daaukins/server/challenge"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/networks"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/store"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
+	docker "github.com/fsouza/go-dockerclient"
 	"gopkg.in/yaml.v3"
 )
 
 var (
+	labs map[string]*lab
+
 	ErrorLabNameMissing     = fmt.Errorf("lab name is missing")
 	ErrorLabNoChallenges    = fmt.Errorf("lab has no challenges")
 	ErrorChallengeNameEmpty = fmt.Errorf("challenge name is empty")
 	ErrorChallengeIDEmpty   = fmt.Errorf("challenge id is empty")
 	ErrorChallengeNoDNS     = fmt.Errorf("challenge has no dns servers")
+	ErrorLabDoesntExist     = fmt.Errorf("lab does not exist")
 )
-
-// Lab is the front facing data structure that is used to interact with labs
-type Lab struct {
-	labs map[string]*lab
-}
 
 // lab is the data bearing struct for a lab
 type lab struct {
-	name       string
-	challenges []*challenge.Challenge
-	network    *networks.Network
+	name        string
+	challenges  []*challenge.Challenge
+	dhcpService *networkService
+	dnsService  *networkService
+	network     *networks.Network
 }
 
 type labChallenge struct {
@@ -39,6 +41,25 @@ type labChallenge struct {
 type labDTO struct {
 	Name       string         `yaml:"name"`
 	Challenges []labChallenge `yaml:"challenges"`
+}
+
+type networkService struct {
+	container      *docker.Container
+	filesToCleanup []string
+}
+
+func init() {
+	// Ensure labs is initiated to an empty slice
+	labs = make(map[string]*lab, 0)
+}
+
+// WithName returns a lab with a given name. If the lab does not exist, an error is returned
+func WithName(name string) (*lab, error) {
+	if labs[name] == nil {
+		return nil, fmt.Errorf("%w: %s", ErrorLabDoesntExist, name)
+	}
+
+	return labs[name], nil
 }
 
 func Provision(path string) (lab, error) {
@@ -55,7 +76,7 @@ func Provision(path string) (lab, error) {
 		return lab{}, ErrorLabNoChallenges
 	}
 
-	network, err := networks.Provision(nil, networks.ProvisionNetworkOptions{})
+	network, err := networks.Provision(networks.ProvisionNetworkOptions{})
 	if err != nil {
 		return lab{}, err
 	}
@@ -80,10 +101,9 @@ func Provision(path string) (lab, error) {
 			return lab{}, err
 		}
 
-		// TODO: insert docker client, DNSServers
-		newChallenge, err := challenge.Provision(nil, &challenge.ProvisionChallengeOptions{
+		newChallenge, err := challenge.Provision(&challenge.ProvisionChallengeOptions{
 			Image:       storedChallenge.Image,
-			DNSServers:  nil,
+			DNSServers:  []string{network.GetDNSAddr()},
 			DNSSettings: labChallenge.Dns,
 		})
 		if err != nil {
@@ -93,15 +113,105 @@ func Provision(path string) (lab, error) {
 		challenges = append(challenges, newChallenge)
 	}
 
-	return lab{
+	thisLab := lab{
 		name:       labDTO.Name,
 		challenges: challenges,
 		network:    network,
-	}, nil
+	}
+
+	labs[labDTO.Name] = &thisLab
+
+	return thisLab, nil
 }
 
-func (l *Lab) Start() error {
-	// TODO
+// Start starts the lab by starting all the challenges and connecting them to the isolated network
+func (l *lab) Start() error {
+	if err := l.network.Create(); err != nil {
+		return err
+	}
+
+	zoneFileEntries := make([]zoneFileEntry, 0)
+
+	for _, challenge := range l.challenges {
+
+		// start the challenge, stop if an error occurs and remove all challenges
+		if err := challenge.Start(); err != nil {
+			for _, challenge := range l.challenges {
+				challenge.Remove()
+			}
+
+			return err
+		}
+
+		// Connect the newly started challenge to the isolated network
+		if err := l.network.Connect(challenge); err != nil {
+
+			// If a challenge could not be connected, lets just remove it and continue
+			challenge.Remove()
+			return err
+		}
+
+		for _, hostname := range challenge.GetDNS() {
+			zoneFileEntries = append(zoneFileEntries, zoneFileEntry{
+				hostname: hostname,
+				ip:       challenge.GetIP(),
+			})
+		}
+	}
+
+	// Provision and start the DNS service
+	dnsService, err := provisionDNS(&provisionDNSOptions{
+		zoneFileEntries: zoneFileEntries,
+	})
+	if err != nil {
+		return err
+	}
+
+	if err = l.network.ConnectDNS(dnsService.container); err != nil {
+		return err
+	}
+
+	dhcpService, err := provisionDHCP(&provisionDHCPOptions{
+		DNSAddr:     l.network.GetDNSAddr(),
+		Subnet:      l.network.GetSubnet(),
+		NetworkMode: l.network.GetName(),
+	})
+	if err != nil {
+		return err
+	}
+
+	if err = l.network.ConnectDHCP(dhcpService.container); err != nil {
+		return err
+	}
+
+	if err = virtual.DockerClient().StartContainer(dhcpService.container.ID, nil); err != nil {
+		return err
+	}
+
+	if err = virtual.DockerClient().StartContainer(dnsService.container.ID, nil); err != nil {
+		return err
+	}
+
+	l.dhcpService = dhcpService
+	l.dnsService = dnsService
+
+	return nil
+}
+
+// Remove removes the lab by removing all the challenges and then the isolated network
+func (l *lab) Remove() error {
+	for _, challenge := range l.challenges {
+		if err := challenge.Remove(); err != nil {
+			return err
+		}
+	}
+
+	if err := l.network.Remove(); err != nil {
+		return err
+	}
+
+	delete(labs, l.name)
+
 	return nil
 }
 
@@ -120,8 +230,7 @@ func load(path string) (labDTO, error) {
 	}
 
 	var lab labDTO
-	err = yaml.Unmarshal(data, &lab)
-	if err != nil {
+	if err = yaml.Unmarshal(data, &lab); err != nil {
 		return labDTO{}, err
 	}
 

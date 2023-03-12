@@ -8,26 +8,26 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/challenge"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 )
 
 type Network struct {
 	network *docker.Network
-	client  *docker.Client
 	subnet  string
+	name    string
 }
 
 type ProvisionNetworkOptions struct {
 	Subnet string
 }
 
-func Provision(client *docker.Client, conf ProvisionNetworkOptions) (*Network, error) {
+func Provision(conf ProvisionNetworkOptions) (*Network, error) {
 	subnet, err := ipPool().GetUnusedSubnet()
 	if err != nil {
 		return nil, err
 	}
 
 	return &Network{
-		client: client,
 		subnet: subnet}, nil
 }
 
@@ -37,8 +37,9 @@ func (n *Network) Create() error {
 	}
 
 	name := fmt.Sprintf("daaukins-%s", uuid.New().String())
+	n.name = name
 
-	network, err := n.client.CreateNetwork(docker.CreateNetworkOptions{
+	network, err := virtual.DockerClient().CreateNetwork(docker.CreateNetworkOptions{
 		Name:   name,
 		Driver: "macvlan",
 		IPAM: &docker.IPAMOptions{
@@ -60,7 +61,7 @@ func (n *Network) Create() error {
 }
 
 func (n *Network) Remove() error {
-	err := n.client.RemoveNetwork(n.network.ID)
+	err := virtual.DockerClient().RemoveNetwork(n.network.ID)
 	if err != nil {
 		return err
 	}
@@ -69,30 +70,22 @@ func (n *Network) Remove() error {
 }
 
 func (n *Network) Connect(challenge *challenge.Challenge) error {
-	if challenge == nil {
-		return fmt.Errorf("challenge is nil")
-	}
-
 	containerIP, err := ipPool().GetFreeIP(n.subnet)
 	if err != nil {
 		return err
 	}
 
-	err = n.client.ConnectNetwork(n.network.ID, docker.NetworkConnectionOptions{
-		Container: challenge.GetContainerID(),
-		EndpointConfig: &docker.EndpointConfig{
-			IPAMConfig: &docker.EndpointIPAMConfig{
-				IPv4Address: containerIP,
-			},
-			IPAddress: containerIP,
-		},
-	})
+	challenge.SetIP(containerIP)
 
-	if err != nil {
-		return err
-	}
+	return n.connectContainer(challenge.GetContainerID(), containerIP)
+}
 
-	return nil
+func (n *Network) ConnectDNS(container *docker.Container) error {
+	return n.connectContainer(container.ID, n.GetDNSAddr())
+}
+
+func (n *Network) ConnectDHCP(container *docker.Container) error {
+	return n.connectContainer(container.ID, n.GetDHCPAddr())
 }
 
 func (n *Network) Disconnect(challenge *challenge.Challenge) error {
@@ -100,7 +93,7 @@ func (n *Network) Disconnect(challenge *challenge.Challenge) error {
 		return fmt.Errorf("challenge is nil")
 	}
 
-	err := n.client.DisconnectNetwork(n.network.ID, docker.NetworkConnectionOptions{
+	err := virtual.DockerClient().DisconnectNetwork(n.network.ID, docker.NetworkConnectionOptions{
 		Container: challenge.GetContainerID(),
 	})
 
@@ -118,7 +111,44 @@ func (n *Network) GetNetworkID() string {
 
 // GetDNSAddr returns the IP address of the DNS server in the isolated network
 func (n *Network) GetDNSAddr() string {
-	subnetOctets := strings.Split(n.subnet, ".")
+	return addrInSubnet(n.subnet, "3")
+}
 
-	return fmt.Sprintf("%s.%s.%s.3", subnetOctets[0], subnetOctets[1], subnetOctets[2])
+// GetDHCPAddr returns the IP address of the DHCP server in the isolated network
+func (n *Network) GetDHCPAddr() string {
+	return addrInSubnet(n.subnet, "2")
+
+}
+
+// GetSubnet returns the subnet of the isolated network
+func (n *Network) GetSubnet() string {
+	return n.subnet
+}
+
+func (n *Network) GetName() string {
+	return n.name
+}
+
+func (n *Network) connectContainer(containerID string, containerIP string) error {
+	err := virtual.DockerClient().ConnectNetwork(n.network.ID, docker.NetworkConnectionOptions{
+		Container: containerID,
+		EndpointConfig: &docker.EndpointConfig{
+			IPAMConfig: &docker.EndpointIPAMConfig{
+				IPv4Address: containerIP,
+			},
+			IPAddress: containerIP,
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func addrInSubnet(subnet, octet string) string {
+	subnetOctets := strings.Split(subnet, ".")
+
+	return fmt.Sprintf("%s.%s.%s.%s", subnetOctets[0], subnetOctets[1], subnetOctets[2], octet)
 }
