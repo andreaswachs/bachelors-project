@@ -14,6 +14,7 @@ import (
 type Network struct {
 	network *docker.Network
 	subnet  string
+	name    string
 }
 
 type ProvisionNetworkOptions struct {
@@ -36,6 +37,7 @@ func (n *Network) Create() error {
 	}
 
 	name := fmt.Sprintf("daaukins-%s", uuid.New().String())
+	n.name = name
 
 	network, err := virtual.DockerClient().CreateNetwork(docker.CreateNetworkOptions{
 		Name:   name,
@@ -68,10 +70,6 @@ func (n *Network) Remove() error {
 }
 
 func (n *Network) Connect(challenge *challenge.Challenge) error {
-	if challenge == nil {
-		return fmt.Errorf("challenge is nil")
-	}
-
 	containerIP, err := ipPool().GetFreeIP(n.subnet)
 	if err != nil {
 		return err
@@ -79,21 +77,15 @@ func (n *Network) Connect(challenge *challenge.Challenge) error {
 
 	challenge.SetIP(containerIP)
 
-	err = virtual.DockerClient().ConnectNetwork(n.network.ID, docker.NetworkConnectionOptions{
-		Container: challenge.GetContainerID(),
-		EndpointConfig: &docker.EndpointConfig{
-			IPAMConfig: &docker.EndpointIPAMConfig{
-				IPv4Address: containerIP,
-			},
-			IPAddress: containerIP,
-		},
-	})
+	return n.connectContainer(challenge.GetContainerID(), containerIP)
+}
 
-	if err != nil {
-		return err
-	}
+func (n *Network) ConnectDNS(container *docker.Container) error {
+	return n.connectContainer(container.ID, n.GetDNSAddr())
+}
 
-	return nil
+func (n *Network) ConnectDHCP(container *docker.Container) error {
+	return n.connectContainer(container.ID, n.GetDHCPAddr())
 }
 
 func (n *Network) Disconnect(challenge *challenge.Challenge) error {
@@ -119,7 +111,44 @@ func (n *Network) GetNetworkID() string {
 
 // GetDNSAddr returns the IP address of the DNS server in the isolated network
 func (n *Network) GetDNSAddr() string {
-	subnetOctets := strings.Split(n.subnet, ".")
+	return addrInSubnet(n.subnet, "3")
+}
 
-	return fmt.Sprintf("%s.%s.%s.3", subnetOctets[0], subnetOctets[1], subnetOctets[2])
+// GetDHCPAddr returns the IP address of the DHCP server in the isolated network
+func (n *Network) GetDHCPAddr() string {
+	return addrInSubnet(n.subnet, "2")
+
+}
+
+// GetSubnet returns the subnet of the isolated network
+func (n *Network) GetSubnet() string {
+	return n.subnet
+}
+
+func (n *Network) GetName() string {
+	return n.name
+}
+
+func (n *Network) connectContainer(containerID string, containerIP string) error {
+	err := virtual.DockerClient().ConnectNetwork(n.network.ID, docker.NetworkConnectionOptions{
+		Container: containerID,
+		EndpointConfig: &docker.EndpointConfig{
+			IPAMConfig: &docker.EndpointIPAMConfig{
+				IPv4Address: containerIP,
+			},
+			IPAddress: containerIP,
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func addrInSubnet(subnet, octet string) string {
+	subnetOctets := strings.Split(subnet, ".")
+
+	return fmt.Sprintf("%s.%s.%s.%s", subnetOctets[0], subnetOctets[1], subnetOctets[2], octet)
 }
