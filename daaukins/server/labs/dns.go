@@ -35,7 +35,7 @@ type provisionDNSOptions struct {
 	zoneFileEntries []zoneFileEntry
 }
 
-func provisionDNS(options *provisionDNSOptions) (*docker.Container, error) {
+func provisionDNS(options *provisionDNSOptions) (*networkService, error) {
 	zoneFile := zoneFile
 	for _, entry := range options.zoneFileEntries {
 		zoneFile += fmt.Sprintln(toEntry(entry))
@@ -75,6 +75,9 @@ func provisionDNS(options *provisionDNSOptions) (*docker.Container, error) {
 		Config: &docker.Config{
 			Image:  "coredns/coredns:1.10.0",
 			Memory: 128 * 1024 * 1024,
+			Labels: map[string]string{
+				"daaukins": "true",
+			},
 		},
 		HostConfig: &docker.HostConfig{
 			Binds: []string{
@@ -88,7 +91,13 @@ func provisionDNS(options *provisionDNSOptions) (*docker.Container, error) {
 		return nil, err
 	}
 
-	return container, nil
+	return &networkService{
+		container: container,
+		filesToCleanup: []string{
+			tmpCoreFile.Name(),
+			tmpZoneFile.Name(),
+		},
+	}, nil
 }
 
 func toEntry(entry zoneFileEntry) string {
