@@ -33,6 +33,9 @@ func Provision(conf *ProvisionChallengeOptions) (*Challenge, error) {
 		Name: fmt.Sprintf("daaukins-%s", uuid.New().String()),
 		Config: &docker.Config{
 			Image: conf.Image,
+			Labels: map[string]string{
+				"daaukins": "true",
+			},
 		},
 		HostConfig: &docker.HostConfig{
 			DNS: conf.DNSServers,
