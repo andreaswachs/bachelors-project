@@ -4,8 +4,11 @@ setup:
 clean-docker:
 	./bin/clean-docker.sh
 
-build:
+grpc-build:
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative service/service.proto
+
+grpc-debug:
+	evans --path service --proto service.proto --host localhost
 
 install-proto:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
