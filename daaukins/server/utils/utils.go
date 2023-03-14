@@ -1,10 +1,10 @@
 package utils
 
 import (
-	"encoding/binary"
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 
 	"github.com/google/uuid"
 )
@@ -22,24 +22,24 @@ func RandomName() string {
 // GetAvailableMemory returns the amount of free memory in megabytes.
 // This implementation assumes that the OS is Linux, with the precense of the
 // /proc/meminfo file.
-func GetAvailableMemory() (uint64, error) {
+// This will be faulty if the system RAM exeeds 2TB
+func GetAvailableMemory() (int, error) {
 	contents, err := os.ReadFile(meminfoFile)
 	if err != nil {
 		return 0, err
 	}
 
-	var memFree uint64
+	var memFree int
 
 	// Find the MemAvailable line
 	matches := MemAvailableRegex.FindSubmatch(contents)
+	// Matches are the full match and the first capture group
 	if len(matches) == 2 {
 		// Convert the MemAvailable value to an integer
-		mem, n := binary.Uvarint(matches[1])
-		if n != len(matches[1]) {
-			return 0, fmt.Errorf("could not parse MemAvailable value: %s", matches[1])
+		memFree, err = strconv.Atoi(string(matches[1]))
+		if err != nil {
+			return 0, err
 		}
-
-		memFree = mem
 	}
 
 	if memFree == 0 {

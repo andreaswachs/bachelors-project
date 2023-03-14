@@ -248,7 +248,7 @@ func getTestResource(name string) string {
 	return filepath.Join(basepath, "..", "test_resources", name)
 }
 
-func createMockMeminfoFile(t *testing.T, memAvailableMb uint64) (func(), error) {
+func createMockMeminfoFile(t *testing.T, memAvailableMb int) (func(), error) {
 	meminfoContents := fmt.Sprintf(`MemTotal:       16270828 kB
 MemFree:         3745292 kB
 MemAvailable:    %d kB

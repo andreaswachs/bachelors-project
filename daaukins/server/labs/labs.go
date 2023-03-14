@@ -70,7 +70,7 @@ func HasCapacity(path string) (bool, error) {
 		return false, nil
 	}
 
-	var totalMemoryRequired uint64
+	var totalMemoryRequired int
 
 	for _, labChallenge := range labDTO.Challenges {
 		storedChallenge, err := store.GetChallenge(labChallenge.Challenge)

@@ -1,5 +1,9 @@
 # Daaukins Server
 
+## Interesting technical ~~limitations~~details
+
+- Hosts should not have more than ~2TB of RAM, as the available memory calculations will break since they use ints to read the available memory in kB.
+
 
 ## Useful tools
 
