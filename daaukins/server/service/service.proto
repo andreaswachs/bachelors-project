@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/andreaswachs/bachelors-project/daaukins/service";
+
+package service;
+
+service service {
+    rpc HaveCapacity(HaveCapacityRequest) returns (HaveCapacityResponse) {}
+    rpc ScheduleLab(ScheduleLabRequest) returns (ScheduleLabResponse) {}
+    rpc GetLab(GetLabRequest) returns (GetLabResponse) {}
+    rpc GetLabs(GetLabsRequest) returns (GetLabsResponse) {}
+}
+
+// HaveCapacityRequest contains the string lab
+// which is YAML configuration for a lab.
+// It is the server's responsibilityy to parse the YAML
+// and check to see if it has capacity and provide an appropriate response.
+message HaveCapacityRequest {
+    string lab = 1;
+}
+
+// HaveCapacityResponse contains a boolean
+// which is true if the server has capacity for the lab
+// and false if it does not.
+message HaveCapacityResponse {
+    bool hasCapacity = 1;
+}
+
+// ScheduleLabRequest contains the string lab
+// which is YAML configuration for a lab.
+// It is the server's responsibility to parse the YAML
+// and schedule the lab.
+message ScheduleLabRequest {
+    string lab = 1;
+}
+
+// ScheduleLabResponse
+message ScheduleLabResponse {
+    bool scheduled = 1;
+    string id = 2;
+}
+
+// GetLabRequest contains the string id
+// which is the id of the lab to get.
+message GetLabRequest {
+    string id = 1;
+}
+
+// GetLabResponse
+message GetLabResponse {
+    LabDescription lab = 1;
+}
+
+message LabDescription {
+    string id = 1;
+    string name = 2;
+    string num_challenges = 3;
+    string num_users = 4;
+}
+
+// GetLabsRequest
+message GetLabsRequest {
+    google.protobuf.Empty empty = 1;
+}
+
+// GetLabsResponse
+message GetLabsResponse {
+    repeated LabDescription labs = 1;
+}
