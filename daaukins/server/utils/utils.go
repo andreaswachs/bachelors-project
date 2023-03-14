@@ -7,7 +7,6 @@ import (
 	"regexp"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -33,7 +32,6 @@ func GetAvailableMemory() (uint64, error) {
 
 	// Find the MemAvailable line
 	matches := MemAvailableRegex.FindSubmatch(contents)
-	log.Debug().Msgf("matches: %v", matches)
 	if len(matches) == 2 {
 		// Convert the MemAvailable value to an integer
 		mem, n := binary.Uvarint(matches[1])
