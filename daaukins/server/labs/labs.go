@@ -7,6 +7,7 @@ import (
 	"github.com/andreaswachs/bachelors-project/daaukins/server/challenge"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/networks"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/store"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 	docker "github.com/fsouza/go-dockerclient"
 	"gopkg.in/yaml.v3"
@@ -60,6 +61,33 @@ func WithName(name string) (*lab, error) {
 	}
 
 	return labs[name], nil
+}
+
+func HasCapacity(path string) (bool, error) {
+	// TODO: factor in memory for the user container(s) #31
+	labDTO, err := load(path)
+	if err != nil {
+		return false, nil
+	}
+
+	var totalMemoryRequired uint64
+
+	for _, labChallenge := range labDTO.Challenges {
+		storedChallenge, err := store.GetChallenge(labChallenge.Challenge)
+		if err != nil {
+			return false, err
+		}
+
+		totalMemoryRequired += storedChallenge.Memory
+	}
+
+	availableMemory, err := utils.GetAvailableMemory()
+	if err != nil {
+		return false, err
+	}
+
+	return availableMemory >= totalMemoryRequired, nil
+
 }
 
 func Provision(path string) (lab, error) {
