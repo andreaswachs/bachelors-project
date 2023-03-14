@@ -23,7 +23,7 @@ type ChallengeTemplate struct {
 	Name   string `yaml:"name"`
 	Id     string `yaml:"id"`
 	Image  string `yaml:"image"`
-	Memory int64  `yaml:"memory"`
+	Memory uint64 `yaml:"memory"`
 }
 
 type Store struct {
