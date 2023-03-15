@@ -11,6 +11,7 @@ service service {
     rpc ScheduleLab(ScheduleLabRequest) returns (ScheduleLabResponse) {}
     rpc GetLab(GetLabRequest) returns (GetLabResponse) {}
     rpc GetLabs(GetLabsRequest) returns (GetLabsResponse) {}
+    rpc RemoveLab(RemoveLabRequest) returns (RemoveLabResponse) {}
 }
 
 // HaveCapacityRequest contains the string lab
@@ -56,8 +57,8 @@ message GetLabResponse {
 message LabDescription {
     string id = 1;
     string name = 2;
-    string num_challenges = 3;
-    string num_users = 4;
+    int32 num_challenges = 3;
+    int32 num_users = 4;
 }
 
 // GetLabsRequest
@@ -68,4 +69,12 @@ message GetLabsRequest {
 // GetLabsResponse
 message GetLabsResponse {
     repeated LabDescription labs = 1;
+}
+
+message RemoveLabRequest {
+    string id = 1;
+}
+
+message RemoveLabResponse {
+    bool ok = 1;
 }
