@@ -52,6 +52,16 @@ func GetAvailableMemory() (int, error) {
 	return memFree, nil
 }
 
+func DeleteFiles(files []string) error {
+	for _, file := range files {
+		if err := os.Remove(file); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // SetMeminfoFile sets the path to the meminfo file to be used by the
 // GetAvailableMemory function.
 // This should only be used for testing purposes.
