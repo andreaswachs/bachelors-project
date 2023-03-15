@@ -1,4 +1,4 @@
-package labs
+package dhcp
 
 import (
 	"fmt"
@@ -11,7 +11,12 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 )
 
-type provisionDHCPOptions struct {
+type DHCPService struct {
+	container      *docker.Container
+	filesToCleanup []string
+}
+
+type ProvisionDHCPOptions struct {
 	DNSAddr     string
 	Subnet      string
 	NetworkMode string
@@ -23,7 +28,7 @@ func format(subnet string, lastOctet int) string {
 	return fmt.Sprintf("%s.%d", strings.Join(octets[:len(octets)-1], "."), lastOctet)
 }
 
-func provisionDHCP(options *provisionDHCPOptions) (*networkService, error) {
+func Provision(options *ProvisionDHCPOptions) (*DHCPService, error) {
 	if err := validateProvisionDHCPOptions(options); err != nil {
 		return nil, err
 	}
@@ -75,13 +80,36 @@ func provisionDHCP(options *provisionDHCPOptions) (*networkService, error) {
 		return nil, err
 	}
 
-	return &networkService{
+	return &DHCPService{
 		container:      container,
 		filesToCleanup: []string{dhcpConfigFile.Name()},
 	}, nil
 }
 
-func validateProvisionDHCPOptions(options *provisionDHCPOptions) error {
+// type networkService interface {
+// 	Start() error
+// 	Stop() error
+// 	GetContainer() *docker.Container
+// 	Cleanup() error
+// }
+
+func (s *DHCPService) Start() error {
+	return virtual.DockerClient().StartContainer(s.container.ID, nil)
+}
+
+func (s *DHCPService) Stop() error {
+	return virtual.DockerClient().StopContainer(s.container.ID, 0)
+}
+
+func (s *DHCPService) GetContainer() *docker.Container {
+	return s.container
+}
+
+func (s *DHCPService) Cleanup() error {
+	return utils.DeleteFiles(s.filesToCleanup)
+}
+
+func validateProvisionDHCPOptions(options *ProvisionDHCPOptions) error {
 	if options.DNSAddr == "" {
 		return fmt.Errorf("dns address is missing")
 	}
