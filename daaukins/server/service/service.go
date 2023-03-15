@@ -20,3 +20,6 @@ func (s *Server) GetLab(context context.Context, request *GetLabRequest) (*GetLa
 func (s *Server) GetLabs(context context.Context, request *GetLabsRequest) (*GetLabsResponse, error) {
 	return GetLabs(context, request)
 }
+func (s *Server) RemoveLab(context context.Context, request *RemoveLabRequest) (*RemoveLabResponse, error) {
+	return RemoveLab(context, request)
+}
