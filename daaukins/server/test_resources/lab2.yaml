@@ -1,0 +1,12 @@
+name: SecondLab
+
+challenges:
+  - name: Free Flag
+    challenge: free_flag
+    dns:
+    - freeflag.daaukins
+
+  - name: Free Flag2
+    challenge: free_flag
+    dns:
+    - other_freeflag.daaukins
