@@ -10,6 +10,10 @@ grpc-build:
 grpc-debug:
 	evans --path service --proto service.proto --host localhost
 
+dev:
+	go build
+	./server
+
 install-proto:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
