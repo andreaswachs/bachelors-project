@@ -26,6 +26,7 @@ type ServiceClient interface {
 	ScheduleLab(ctx context.Context, in *ScheduleLabRequest, opts ...grpc.CallOption) (*ScheduleLabResponse, error)
 	GetLab(ctx context.Context, in *GetLabRequest, opts ...grpc.CallOption) (*GetLabResponse, error)
 	GetLabs(ctx context.Context, in *GetLabsRequest, opts ...grpc.CallOption) (*GetLabsResponse, error)
+	RemoveLab(ctx context.Context, in *RemoveLabRequest, opts ...grpc.CallOption) (*RemoveLabResponse, error)
 }
 
 type serviceClient struct {
@@ -72,6 +73,15 @@ func (c *serviceClient) GetLabs(ctx context.Context, in *GetLabsRequest, opts ..
 	return out, nil
 }
 
+func (c *serviceClient) RemoveLab(ctx context.Context, in *RemoveLabRequest, opts ...grpc.CallOption) (*RemoveLabResponse, error) {
+	out := new(RemoveLabResponse)
+	err := c.cc.Invoke(ctx, "/service.service/RemoveLab", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ServiceServer is the server API for Service service.
 // All implementations must embed UnimplementedServiceServer
 // for forward compatibility
@@ -80,6 +90,7 @@ type ServiceServer interface {
 	ScheduleLab(context.Context, *ScheduleLabRequest) (*ScheduleLabResponse, error)
 	GetLab(context.Context, *GetLabRequest) (*GetLabResponse, error)
 	GetLabs(context.Context, *GetLabsRequest) (*GetLabsResponse, error)
+	RemoveLab(context.Context, *RemoveLabRequest) (*RemoveLabResponse, error)
 	mustEmbedUnimplementedServiceServer()
 }
 
@@ -98,6 +109,9 @@ func (UnimplementedServiceServer) GetLab(context.Context, *GetLabRequest) (*GetL
 }
 func (UnimplementedServiceServer) GetLabs(context.Context, *GetLabsRequest) (*GetLabsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLabs not implemented")
+}
+func (UnimplementedServiceServer) RemoveLab(context.Context, *RemoveLabRequest) (*RemoveLabResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveLab not implemented")
 }
 func (UnimplementedServiceServer) mustEmbedUnimplementedServiceServer() {}
 
@@ -184,6 +198,24 @@ func _Service_GetLabs_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Service_RemoveLab_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveLabRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServiceServer).RemoveLab(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/service.service/RemoveLab",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServiceServer).RemoveLab(ctx, req.(*RemoveLabRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Service_ServiceDesc is the grpc.ServiceDesc for Service service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -206,6 +238,10 @@ var Service_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetLabs",
 			Handler:    _Service_GetLabs_Handler,
+		},
+		{
+			MethodName: "RemoveLab",
+			Handler:    _Service_RemoveLab_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
