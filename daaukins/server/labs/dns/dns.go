@@ -1,9 +1,10 @@
-package labs
+package dns
 
 import (
 	"fmt"
 	"os"
 
+	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 	docker "github.com/fsouza/go-dockerclient"
 )
@@ -26,18 +27,23 @@ var (
 `
 )
 
-type zoneFileEntry struct {
-	hostname string
-	ip       string
+type DNSService struct {
+	container      *docker.Container
+	filesToCleanup []string
 }
 
-type provisionDNSOptions struct {
-	zoneFileEntries []zoneFileEntry
+type ZoneFileEntry struct {
+	Hostname string
+	Ip       string
 }
 
-func provisionDNS(options *provisionDNSOptions) (*networkService, error) {
+type ProvisionDNSOptions struct {
+	ZoneFileEntries []ZoneFileEntry
+}
+
+func Provision(options *ProvisionDNSOptions) (*DNSService, error) {
 	zoneFile := zoneFile
-	for _, entry := range options.zoneFileEntries {
+	for _, entry := range options.ZoneFileEntries {
 		zoneFile += fmt.Sprintln(toEntry(entry))
 	}
 
@@ -91,15 +97,28 @@ func provisionDNS(options *provisionDNSOptions) (*networkService, error) {
 		return nil, err
 	}
 
-	return &networkService{
-		container: container,
-		filesToCleanup: []string{
-			tmpCoreFile.Name(),
-			tmpZoneFile.Name(),
-		},
+	return &DNSService{
+		container:      container,
+		filesToCleanup: []string{tmpCoreFile.Name(), tmpZoneFile.Name()},
 	}, nil
 }
 
-func toEntry(entry zoneFileEntry) string {
-	return fmt.Sprintf("%s IN A %s", entry.hostname, entry.ip)
+func (s *DNSService) Start() error {
+	return virtual.DockerClient().StartContainer(s.container.ID, nil)
+}
+
+func (s *DNSService) Stop() error {
+	return virtual.DockerClient().StopContainer(s.container.ID, 0)
+}
+
+func (s *DNSService) GetContainer() *docker.Container {
+	return s.container
+}
+
+func (s *DNSService) Cleanup() error {
+	return utils.DeleteFiles(s.filesToCleanup)
+}
+
+func toEntry(entry ZoneFileEntry) string {
+	return fmt.Sprintf("%s IN A %s", entry.Hostname, entry.Ip)
 }

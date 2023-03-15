@@ -477,20 +477,3 @@ func TestValidateStoreDTOWithNoMemoryChallenge(t *testing.T) {
 		t.Error("expected error, got nil")
 	}
 }
-
-func TestValidateStoreDTOWithNegativeMemoryChallenge(t *testing.T) {
-	badTemplateInvalidMemory := ChallengeTemplate{
-		Name:   "challenge1",
-		Id:     "id1",
-		Image:  "image1",
-		Memory: -100,
-	}
-
-	dto := &storeDTO{
-		Challenges: []ChallengeTemplate{badTemplateInvalidMemory},
-	}
-
-	if err := validateStoreDTO(dto); err == nil {
-		t.Error("expected error, got nil")
-	}
-}

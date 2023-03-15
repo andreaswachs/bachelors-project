@@ -2,4 +2,4 @@ challenges:
   - name: Free Flag
     id: free_flag
     image: andreaswachs/placeholder_vuln_server
-    memory: 50MB
+    memory: 50

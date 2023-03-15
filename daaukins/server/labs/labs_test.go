@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/store"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 	docker "github.com/fsouza/go-dockerclient"
 )
@@ -146,6 +147,72 @@ func TestStart(t *testing.T) {
 	}
 }
 
+func TestHaveCapacity(t *testing.T) {
+	// Loads the test store
+	if err := store.Load(getTestResource("store.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	cleanup, err := createMockMeminfoFile(t, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+
+	hasCapacity, err := HasCapacity(getTestResource("lab.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !hasCapacity {
+		t.Fatal("Expected lab to have capacity, got false")
+	}
+}
+
+func TestHaveCapacityDoesntHaveCapacityNonZeroAvailable(t *testing.T) {
+	// Loads the test store
+	if err := store.Load(getTestResource("store.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	cleanup, err := createMockMeminfoFile(t, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+
+	hasCapacity, err := HasCapacity(getTestResource("lab.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if hasCapacity {
+		t.Fatal("Expected lab to not have capacity, got true")
+	}
+}
+
+func TestHaveCapacityDoesntHaveCapacityZeroAvailable(t *testing.T) {
+	// Loads the test store
+	if err := store.Load(getTestResource("store.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	cleanup, err := createMockMeminfoFile(t, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+
+	hasCapacity, err := HasCapacity(getTestResource("lab.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if hasCapacity {
+		t.Fatal("Expected lab to not have capacity, got true")
+	}
+}
+
 func prepYamlConfigFile(yamlSetting preppedYamlConfig, t *testing.T) (string, error) {
 	var yamlConfig string
 
@@ -179,6 +246,38 @@ challenges:
 
 func getTestResource(name string) string {
 	return filepath.Join(basepath, "..", "test_resources", name)
+}
+
+func createMockMeminfoFile(t *testing.T, memAvailableMb int) (func(), error) {
+	meminfoContents := fmt.Sprintf(`MemTotal:       16270828 kB
+MemFree:         3745292 kB
+MemAvailable:    %d kB
+Buffers:            3896 kB
+Cached:          5039020 kB
+SwapCached:            0 kB
+Active:          5644404 kB
+Inactive:        3942080 kB
+Active(anon):    3743676 kB`, memAvailableMb*1024)
+
+	// Create a mock meminfo file
+	meminfo, err := os.CreateTemp("", "meminfo")
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Write the mock meminfo file
+	_, err = meminfo.Write([]byte(meminfoContents))
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Set the meminfo file to be used by the GetAvailableMemory function
+	utils.SetMeminfoFile(meminfo.Name())
+
+	return func() {
+		os.Remove(meminfo.Name())
+		meminfo.Close()
+	}, nil
 }
 
 func verifyContainerRunning(ID string) error {
