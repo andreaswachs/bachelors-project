@@ -1,3 +1,7 @@
+// Labs are a collection of challenges that are connected to each other over an isolated network.
+// The frontend allows users to interact with the services deployed to the network.
+// A lab contains a single frontend. This is due to the nature of this being my bachelors project
+// and this source code being a PoC.
 package labs
 
 import (
@@ -5,6 +9,7 @@ import (
 	"os"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/challenge"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/frontend"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs/dhcp"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs/dns"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/networks"
@@ -41,6 +46,7 @@ type lab struct {
 	dnsService  networkService
 	network     *networks.Network
 	isStarted   bool
+	frontend    frontend.T
 }
 
 type labChallenge struct {
@@ -99,13 +105,12 @@ func GetAllStarted() []*lab {
 }
 
 func HasCapacity(path string) (bool, error) {
-	// TODO: factor in memory for the user container(s) #31
 	labDTO, err := load(path)
 	if err != nil {
 		return false, nil
 	}
 
-	var totalMemoryRequired int
+	totalMemoryRequired := 2 * 1024 * 1024 * 1024 // 2GB for the frontend
 
 	for _, labChallenge := range labDTO.Challenges {
 		storedChallenge, err := store.GetChallenge(labChallenge.Challenge)
@@ -175,10 +180,20 @@ func Provision(path string) (lab, error) {
 		challenges = append(challenges, newChallenge)
 	}
 
+	frontend, err := frontend.Provision(&frontend.ProvisionFrontendOptions{
+		Network: network.GetName(),
+		DNS:     []string{network.GetDNSAddr()},
+		Port:    4000,
+	})
+	if err != nil {
+		return lab{}, err
+	}
+
 	thisLab := lab{
 		name:       labDTO.Name,
 		challenges: challenges,
 		network:    network,
+		frontend:   frontend,
 	}
 
 	labs[labDTO.Name] = &thisLab
@@ -258,7 +273,6 @@ func (l *lab) Start() error {
 		return err
 	}
 
-	// TODO: Move to dhcpService
 	if err = dhcpService.Start(); err != nil {
 		return err
 	}
@@ -266,6 +280,17 @@ func (l *lab) Start() error {
 	if err = dnsService.Start(); err != nil {
 		return err
 	}
+
+	if err = l.frontend.Start(); err != nil {
+		return err
+	}
+
+	cip, err := networks.ConnectToBridge(l.frontend.GetContainer())
+	if err != nil {
+		return err
+	}
+
+	log.Debug().Msgf("Frontend connected to bridge network, IP: %s", cip)
 
 	l.dhcpService = dhcpService
 	l.dnsService = dnsService
