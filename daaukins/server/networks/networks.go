@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/google/uuid"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/challenge"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 )
 
@@ -28,7 +28,32 @@ func Provision(conf ProvisionNetworkOptions) (*Network, error) {
 	}
 
 	return &Network{
-		subnet: subnet}, nil
+		subnet: subnet,
+		name:   utils.RandomName(),
+	}, nil
+}
+
+func ConnectToBridge(container *docker.Container) (string, error) {
+	err := virtual.DockerClient().ConnectNetwork("bridge", docker.NetworkConnectionOptions{
+		Container: container.ID,
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	network, err := virtual.DockerClient().NetworkInfo("bridge")
+	if err != nil {
+		return "", err
+	}
+
+	for _, endpoint := range network.Containers {
+		if container.Name == endpoint.Name {
+			return endpoint.IPv4Address[:len(endpoint.IPv4Address)-3], nil
+		}
+	}
+
+	return "", nil
 }
 
 func (n *Network) Create() error {
@@ -36,11 +61,8 @@ func (n *Network) Create() error {
 		return fmt.Errorf("network is already created")
 	}
 
-	name := fmt.Sprintf("daaukins-%s", uuid.New().String())
-	n.name = name
-
 	network, err := virtual.DockerClient().CreateNetwork(docker.CreateNetworkOptions{
-		Name:   name,
+		Name:   n.name,
 		Driver: "macvlan",
 		IPAM: &docker.IPAMOptions{
 			Config: []docker.IPAMConfig{{
@@ -86,6 +108,15 @@ func (n *Network) ConnectDNS(container *docker.Container) error {
 
 func (n *Network) ConnectDHCP(container *docker.Container) error {
 	return n.connectContainer(container.ID, n.GetDHCPAddr())
+}
+
+func (n *Network) ConnectContainer(container *docker.Container) error {
+	containerIP, err := ipPool().GetFreeIP(n.subnet)
+	if err != nil {
+		return err
+	}
+
+	return n.connectContainer(container.ID, containerIP)
 }
 
 func (n *Network) Disconnect(challenge *challenge.Challenge) error {
