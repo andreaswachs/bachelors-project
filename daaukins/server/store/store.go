@@ -1,9 +1,13 @@
 package store
 
 import (
+	"flag"
 	"fmt"
 	"os"
+	"sync"
 
+	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 )
@@ -92,8 +96,45 @@ func loadStore(data []byte) (*storeDTO, error) {
 }
 
 func transferChallenges(dto *storeDTO) {
+	var wg sync.WaitGroup
+
 	for _, c := range dto.Challenges {
 		store.challenges[c.Id] = c
+
+		wg.Add(1)
+		go func(c ChallengeTemplate) {
+			defer wg.Done()
+
+			images, err := virtual.DockerClient().ListImages(docker.ListImagesOptions{All: true})
+			if err != nil {
+				log.Err(err).Msg("failed to list images on the server")
+			}
+
+			// Ensure that we don't pull images that are already present
+			for _, image := range images {
+				for _, tag := range image.RepoTags {
+					if tag == c.Image {
+						log.Info().Msgf("image already present: %s", c.Image)
+						return
+					}
+				}
+			}
+
+			if flag.Lookup("test.v") != nil {
+				return
+			}
+
+			err = virtual.DockerClient().PullImage(docker.PullImageOptions{
+				Repository: c.Image,
+			}, docker.AuthConfiguration{})
+			if err != nil {
+				log.Err(err).Msgf("failed to pull image: %s", c.Image)
+			}
+
+			log.Info().Msgf("pulled image: %s", c.Image)
+		}(c)
+
+		wg.Wait()
 	}
 }
 
