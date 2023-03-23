@@ -3,6 +3,7 @@ package service
 import (
 	context "context"
 	"fmt"
+	"net"
 	"os"
 	sync "sync"
 
@@ -15,6 +16,8 @@ import (
 var (
 	connectedMinions    []*minion
 	disconnectedMinions []*minion
+	server              *grpc.Server
+	port                int
 )
 
 type minion struct {
@@ -36,6 +39,33 @@ type askGetLabResponse struct {
 
 type Server struct {
 	UnimplementedServiceServer
+}
+
+func Initialize() {
+	port = config.GetServicePort()
+
+	server = grpc.NewServer(
+	// grpc.Creds(LoadKeyPair()),
+	// grpc.UnaryInterceptor(middlefunc),
+	)
+
+	RegisterServiceServer(server, new(Server))
+	go func() {
+		l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+		if err != nil {
+			log.Panic().Err(err).Msgf("failed to listen on port %d", port)
+		}
+		log.Info().Msgf("listening on port %d", port)
+		if err := server.Serve(l); err != nil {
+			log.Panic().Err(err).Msg("failed to serve")
+		}
+	}()
+
+	connectedMinions, disconnectedMinions = ConnectMinions()
+}
+
+func Stop() {
+	server.GracefulStop()
 }
 
 func (s *Server) HaveCapacity(context context.Context, request *HaveCapacityRequest) (*HaveCapacityResponse, error) {
@@ -399,26 +429,4 @@ func (s *Server) RemoveLab(context context.Context, request *RemoveLabRequest) (
 	}
 
 	return RemoveLab(context, request)
-}
-
-// ConnectMinions attepmts to connect to all minions in the config
-func ConnectMinions() {
-	for _, minionConfig := range config.GetMinions() {
-		minionBuffer := &minion{
-			config: minionConfig,
-		}
-
-		// TODO: mTLS
-		conn, err := grpc.Dial(fmt.Sprintf("%s:%d", minionConfig.Address, minionConfig.Port), grpc.WithInsecure())
-		if err != nil {
-			disconnectedMinions = append(disconnectedMinions, minionBuffer)
-			log.Error().Err(err).Msgf("Failed to connect to minion %s:%d", minionConfig.Address, minionConfig.Port)
-		}
-
-		serviceClient := NewServiceClient(conn)
-		minionBuffer.client = serviceClient
-
-		connectedMinions = append(connectedMinions, minionBuffer)
-		log.Info().Msgf("Connected to minion %s:%d", minionConfig.Address, minionConfig.Port)
-	}
 }
