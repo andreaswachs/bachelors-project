@@ -29,8 +29,14 @@ func HaveCapacity(context context.Context, request *HaveCapacityRequest) (*HaveC
 		return nil, status.Errorf(codes.Internal, "failed to check if lab has capacity: %v", err)
 	}
 
+	capacity, err := labs.GetCapacity()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get capacity: %v", err)
+	}
+
 	response := &HaveCapacityResponse{
 		HasCapacity: hasCapacity,
+		Capacity:    int32(capacity),
 	}
 
 	return response, nil

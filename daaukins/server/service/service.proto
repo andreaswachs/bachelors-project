@@ -27,6 +27,7 @@ message HaveCapacityRequest {
 // and false if it does not.
 message HaveCapacityResponse {
     bool hasCapacity = 1;
+    int32 capacity = 2;
 }
 
 // ScheduleLabRequest contains the string lab
