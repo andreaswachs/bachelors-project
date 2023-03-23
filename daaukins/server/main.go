@@ -4,9 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
+	"flag"
 	"io/ioutil"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,32 +19,18 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-const (
-	port = 50051
+var (
+	configFilename = flag.String("config", "server.yaml", "path to config file")
 )
 
-func init() {
-	config.Initialize()
-}
-
 func main() {
-	server := grpc.NewServer(
-	// grpc.Creds(LoadKeyPair()),
-	// grpc.UnaryInterceptor(middlefunc),
-	)
+	flag.Parse()
 
-	service.RegisterServiceServer(server, new(service.Server))
+	config.Initialize(&config.InitializeConfigOptions{
+		ConfigFile: *configFilename,
+	})
 
-	go func() {
-		l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-		if err != nil {
-			log.Panic().Err(err).Msgf("failed to listen on port %d", port)
-		}
-		log.Info().Msgf("listening on port %d", port)
-		if err := server.Serve(l); err != nil {
-			log.Panic().Err(err).Msg("failed to serve")
-		}
-	}()
+	service.Initialize()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
@@ -56,7 +41,7 @@ func main() {
 		log.Error().Err(err).Msg("failed to remove all labs. Run `make clean-docker` to cleanup manually")
 	}
 
-	server.GracefulStop()
+	service.Stop()
 }
 
 // Credit: https://github.com/islishude/grpc-mtls-example
