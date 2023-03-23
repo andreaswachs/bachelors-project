@@ -277,9 +277,127 @@ func (s *Server) GetLab(context context.Context, request *GetLabRequest) (*GetLa
 	return GetLab(context, request)
 }
 func (s *Server) GetLabs(context context.Context, request *GetLabsRequest) (*GetLabsResponse, error) {
+	if config.GetServerMode() == config.ModeLeader {
+		// Ask all minions for their labs
+		// If we find any, return them
+		// If we don't find any, return an error
+
+		wg := sync.WaitGroup{}
+		responses := make([]*GetLabsResponse, 0)
+		responseLock := sync.Mutex{}
+
+		for _, connMinion := range connectedMinions {
+			wg.Add(1)
+			go func(m *minion) {
+				defer wg.Done()
+				response, err := m.client.GetLabs(context, &GetLabsRequest{})
+				if err != nil {
+					log.Error().Err(err).Msgf("Failed to get labs from minion %s:%d", m.config.Address, m.config.Port)
+				}
+
+				if len(response.Labs) > 0 {
+					responseLock.Lock()
+					defer responseLock.Unlock()
+
+					responses = append(responses, response)
+				}
+
+				log.Debug().
+					Msgf("Got labs from minion %s:%d", m.config.Address, m.config.Port)
+			}(connMinion)
+		}
+		wg.Wait()
+
+		if len(responses) == 0 {
+			log.Debug().Msg("No minions have labs")
+			return &GetLabsResponse{
+				Labs: make([]*LabDescription, 0),
+			}, nil
+		}
+
+		response := &GetLabsResponse{
+			Labs: make([]*LabDescription, 0),
+		}
+
+		for _, r := range responses {
+			response.Labs = append(response.Labs, r.Labs...)
+		}
+
+		return response, nil
+	}
+
 	return GetLabs(context, request)
 }
 func (s *Server) RemoveLab(context context.Context, request *RemoveLabRequest) (*RemoveLabResponse, error) {
+	if config.GetServerMode() == config.ModeLeader {
+		// Ask all minions for the given lab
+		// If we find it, remove it
+		// If we don't find it, return an error
+
+		wg := sync.WaitGroup{}
+		labFound := false
+		theMinion := &minion{}
+		responseLock := sync.Mutex{}
+
+		// Check if the lab is hosted on this server
+		lab, err := labs.GetByName(request.Id)
+		if err == nil {
+			if lab != nil {
+				err = lab.Remove()
+				if err != nil {
+					log.Error().Err(err).Msg("Failed to remove lab")
+					return nil, err
+				}
+
+				return &RemoveLabResponse{}, nil
+
+			}
+		}
+
+		for _, connMinion := range connectedMinions {
+			wg.Add(1)
+			go func(m *minion) {
+				defer wg.Done()
+				response, err := m.client.GetLab(context, &GetLabRequest{
+					Id: request.Id,
+				})
+				if err != nil {
+					log.Error().Err(err).Msgf("Failed to get lab from minion %s:%d", m.config.Address, m.config.Port)
+				}
+
+				if response.Lab != nil {
+					responseLock.Lock()
+					defer responseLock.Unlock()
+
+					labFound = true
+					theMinion = m
+				}
+
+				log.Debug().
+					Msgf("Got lab from minion %s:%d", m.config.Address, m.config.Port)
+			}(connMinion)
+		}
+
+		wg.Wait()
+
+		if !labFound {
+			log.Error().Msg("No minions have the lab")
+			return nil, fmt.Errorf("no minions have the lab")
+
+		}
+
+		// Remove the lab from the minion
+		_, err = theMinion.client.RemoveLab(context, &RemoveLabRequest{
+			Id: request.Id,
+		})
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to remove lab from minion %s:%d", theMinion.config.Address, theMinion.config.Port)
+			return nil, err
+		}
+
+		return &RemoveLabResponse{}, nil
+	}
+
 	return RemoveLab(context, request)
 }
 
