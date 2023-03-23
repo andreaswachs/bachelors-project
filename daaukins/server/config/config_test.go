@@ -25,7 +25,7 @@ minions: []`
 		t.Error(err)
 	}
 
-	if parsed.ServerMode != ModeMinion {
+	if parsed.ServerMode != ModeFollower {
 		t.Error("Expected server mode to be minion")
 	}
 }
@@ -45,15 +45,15 @@ minions:
 		t.Error("Expected server mode to be leader")
 	}
 
-	if len(parsed.Minions) != 1 {
+	if len(parsed.Followers) != 1 {
 		t.Error("Expected one minion")
 	}
 
-	if parsed.Minions[0].Address != "localhost" {
+	if parsed.Followers[0].Address != "localhost" {
 		t.Error("Expected address to be localhost")
 	}
 
-	if parsed.Minions[0].Port != 8080 {
+	if parsed.Followers[0].Port != 8080 {
 		t.Error("Expected port to be 8080")
 	}
 }

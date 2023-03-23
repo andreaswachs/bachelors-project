@@ -10,31 +10,43 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Mode string
-
 var (
 	config   Config
 	serverId string
 )
 
+type Mode string
+
 const (
-	ModeMinion Mode = "minion"
-	ModeLeader Mode = "leader"
+	ModeLeader   Mode = "leader"
+	ModeFollower Mode = "follower"
 )
 
 type MinionConfig struct {
+	Name    string `yaml:"name"` // TODO: use the name for something useful
 	Address string `yaml:"address"`
 	Port    int    `yaml:"port"`
 }
 
 type Config struct {
-	ServerMode Mode           `yaml:"server_mode"`
-	Minions    []MinionConfig `yaml:"minions"`
+	ServerMode  Mode           `yaml:"server_mode"`
+	ServicePort int            `yaml:"service_port"`
+	Followers   []MinionConfig `yaml:"followers"`
 }
 
-func Initialize() {
+type InitializeConfigOptions struct {
+	ConfigFile string
+}
+
+func Initialize(options *InitializeConfigOptions) {
+	configFilename := "server.yaml"
+
+	if options != nil && options.ConfigFile != "" {
+		configFilename = options.ConfigFile
+	}
+
 	// Load the configuration from the config file
-	configBuffer, err := load("server.yaml")
+	configBuffer, err := load(configFilename)
 	if err != nil {
 		log.Panic().Err(err).Msg("Failed to load config file")
 	}
@@ -48,7 +60,7 @@ func Initialize() {
 }
 
 func GetMinions() []MinionConfig {
-	return config.Minions
+	return config.Followers
 }
 
 func GetServerMode() Mode {
@@ -57,6 +69,10 @@ func GetServerMode() Mode {
 
 func GetServerID() string {
 	return serverId
+}
+
+func GetServicePort() int {
+	return config.ServicePort
 }
 
 func load(file string) (Config, error) {
