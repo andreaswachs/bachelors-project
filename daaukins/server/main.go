@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/service"
 	"github.com/rs/zerolog/log"
@@ -22,6 +23,10 @@ import (
 const (
 	port = 50051
 )
+
+func init() {
+	config.Initialize()
+}
 
 func main() {
 	server := grpc.NewServer(
