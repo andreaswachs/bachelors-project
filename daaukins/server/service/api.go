@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs"
 	"github.com/rs/zerolog/log"
 	codes "google.golang.org/grpc/codes"
@@ -29,8 +30,14 @@ func HaveCapacity(context context.Context, request *HaveCapacityRequest) (*HaveC
 		return nil, status.Errorf(codes.Internal, "failed to check if lab has capacity: %v", err)
 	}
 
+	capacity, err := labs.GetCapacity()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get capacity: %v", err)
+	}
+
 	response := &HaveCapacityResponse{
 		HasCapacity: hasCapacity,
+		Capacity:    int32(capacity),
 	}
 
 	return response, nil
@@ -80,7 +87,8 @@ func GetLab(context context.Context, request *GetLabRequest) (*GetLabResponse, e
 			Name:          lab.GetName(),
 			Id:            lab.GetName(),
 			NumChallenges: int32(len(lab.GetChallenges())),
-			NumUsers:      0, // TODO
+			NumUsers:      1, // PoC limitation: only deploy one frontend to each lab
+			ServerId:      config.GetServerID(),
 		},
 	}
 
@@ -101,7 +109,8 @@ func GetLabs(context context.Context, _request *GetLabsRequest) (*GetLabsRespons
 			Name:          lab.GetName(),
 			Id:            lab.GetName(),
 			NumChallenges: int32(len(lab.GetChallenges())),
-			NumUsers:      0, // TODO
+			NumUsers:      1, // PoC limitation: only deploy one frontend to each lab
+			ServerId:      config.GetServerID(),
 		}
 	}
 

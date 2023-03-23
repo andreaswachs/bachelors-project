@@ -110,7 +110,7 @@ func HasCapacity(path string) (bool, error) {
 		return false, nil
 	}
 
-	totalMemoryRequired := 2 * 1024 * 1024 * 1024 // 2GB for the frontend
+	totalMemoryRequired := 2 * 1024 // 2GB for the frontend
 
 	for _, labChallenge := range labDTO.Challenges {
 		storedChallenge, err := store.GetChallenge(labChallenge.Challenge)
@@ -127,6 +127,15 @@ func HasCapacity(path string) (bool, error) {
 	}
 
 	return availableMemory >= totalMemoryRequired, nil
+}
+
+func GetCapacity() (int, error) {
+	availableMemory, err := utils.GetAvailableMemory()
+	if err != nil {
+		return 0, err
+	}
+
+	return availableMemory, nil
 }
 
 func Provision(path string) (lab, error) {

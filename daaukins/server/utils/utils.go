@@ -19,6 +19,10 @@ func RandomName() string {
 	return uuid.New().String()
 }
 
+func RandomShortName() string {
+	return uuid.New().String()[:8]
+}
+
 // GetAvailableMemory returns the amount of free memory in megabytes.
 // This implementation assumes that the OS is Linux, with the precense of the
 // /proc/meminfo file.

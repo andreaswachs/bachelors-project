@@ -1,0 +1,6 @@
+server_mode: leader
+service_port: 50051
+followers:
+  - name: FirstFollower
+    address: 0.0.0.0
+    port: 50052 
