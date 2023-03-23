@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"syscall"
@@ -65,7 +64,7 @@ func LoadKeyPair() credentials.TransportCredentials {
 		log.Panic().Msgf("failed to load server certification: " + err.Error())
 	}
 
-	data, err := ioutil.ReadFile("certs/ca.crt")
+	data, err := os.ReadFile("certs/ca.crt")
 	if err != nil {
 		log.Panic().Msgf("failed to load CA file: " + err.Error())
 	}

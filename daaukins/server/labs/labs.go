@@ -321,15 +321,19 @@ func (l *lab) Remove() error {
 
 	// Remove the DHCP and DNS service
 	if err := l.dhcpService.Stop(); err != nil {
-		return err
+		log.Error().Err(err).Msg("Error stopping DHCP service")
 	}
 
 	if err := l.dnsService.Stop(); err != nil {
-		return err
+		log.Error().Err(err).Msg("Error stopping DNS service")
+	}
+
+	if err := l.frontend.Stop(); err != nil {
+		log.Error().Err(err).Msg("Error stopping frontend")
 	}
 
 	if err := l.network.Remove(); err != nil {
-		return err
+		log.Error().Err(err).Msg("Error removing network")
 	}
 
 	delete(labs, l.name)

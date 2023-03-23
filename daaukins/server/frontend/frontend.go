@@ -6,6 +6,7 @@ import (
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -78,7 +79,18 @@ func (f *frontend) Start() error {
 }
 
 func (f *frontend) Stop() error {
-	return virtual.DockerClient().StopContainer(f.container.ID, 0)
+	force := false
+
+	err := virtual.DockerClient().StopContainer(f.container.ID, 0)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to stop frontend container")
+		force = true
+	}
+
+	return virtual.DockerClient().RemoveContainer(docker.RemoveContainerOptions{
+		ID:    f.container.ID,
+		Force: force,
+	})
 }
 
 func (f *frontend) GetContainer() *docker.Container {
