@@ -5,6 +5,7 @@ package config
 import (
 	"io/ioutil"
 
+	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 )
@@ -12,7 +13,8 @@ import (
 type Mode string
 
 var (
-	config Config
+	config   Config
+	serverId string
 )
 
 const (
@@ -39,6 +41,9 @@ func Initialize() {
 
 	config = configBuffer
 
+	// Set the server id
+	serverId = utils.RandomShortName()
+
 	log.Info().Msgf("Loaded config: %+v", config)
 }
 
@@ -48,6 +53,10 @@ func GetMinions() []MinionConfig {
 
 func GetServerMode() Mode {
 	return config.ServerMode
+}
+
+func GetServerID() string {
+	return serverId
 }
 
 func load(file string) (Config, error) {
