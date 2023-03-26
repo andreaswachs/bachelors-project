@@ -12,6 +12,7 @@ service service {
     rpc GetLab(GetLabRequest) returns (GetLabResponse) {}
     rpc GetLabs(GetLabsRequest) returns (GetLabsResponse) {}
     rpc RemoveLab(RemoveLabRequest) returns (RemoveLabResponse) {}
+    rpc GetServerMode(GetServerModeRequest) returns (GetServerModeResponse) {}
 }
 
 // HaveCapacityRequest contains the string lab
@@ -79,4 +80,12 @@ message RemoveLabRequest {
 
 message RemoveLabResponse {
     bool ok = 1;
+}
+
+message GetServerModeRequest {
+    google.protobuf.Empty empty = 1;
+}
+
+message GetServerModeResponse {
+    string mode = 1;
 }
