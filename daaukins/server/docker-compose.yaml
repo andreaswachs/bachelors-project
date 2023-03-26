@@ -1,0 +1,17 @@
+version: '3.9'
+
+services:
+  example:
+    image: andreaswachs/daaukins-server:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    expose:
+      - 50051
+    ports:
+      - 50051:50051
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./server.yaml:/app/server.yaml:ro
+      - ./store.yaml:/app/store.yaml:ro
+      - /tmp:/tmp
