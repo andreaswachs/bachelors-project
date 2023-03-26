@@ -1,0 +1,43 @@
+version: '3.9'
+
+services:
+  leader-1:
+    image: andreaswachs/daaukins-server:latest
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    expose:
+      - 50051
+    ports:
+      - 50051:50051
+    networks:
+      - leader_leader
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./leader_leader/server.leader1.yaml:/app/server.yaml:ro
+      - ./leader_leader/store.yaml:/app/store.yaml:ro
+      # - /tmp:/tmp # Don't need this
+    depends_on:
+      - leader-2
+
+  leader-2:
+    image: andreaswachs/daaukins-server:latest
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    expose:
+      - 50052
+    ports:
+      - 50052:50052
+    networks:
+      - leader_leader
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./leader_leader/server.leader2.yaml:/app/server.yaml:ro
+      - ./leader_leader/store.yaml:/app/store.yaml:ro
+      # - /tmp:/tmp # Don't need this
+
+networks:
+  leader_leader:
+    external: false
+  

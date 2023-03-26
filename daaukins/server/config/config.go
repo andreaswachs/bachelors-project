@@ -3,7 +3,7 @@
 package config
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/rs/zerolog/log"
@@ -13,13 +13,6 @@ import (
 var (
 	config   Config
 	serverId string
-)
-
-type Mode string
-
-const (
-	ModeLeader   Mode = "leader"
-	ModeFollower Mode = "follower"
 )
 
 type MinionConfig struct {
@@ -76,7 +69,7 @@ func GetServicePort() int {
 }
 
 func load(file string) (Config, error) {
-	content, err := ioutil.ReadFile(file)
+	content, err := os.ReadFile(file)
 	if err != nil {
 		return Config{}, err
 	}

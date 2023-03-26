@@ -20,3 +20,10 @@ install-proto:
 	@echo ""
 	@echo "Ensure that you have ~/go/bin located in your PATH"
 	@echo ""
+
+system-integration-test-leader-leader:
+	@echo ""
+	@echo "Success criteria: an error log message is posted complaining that a follower is a leader, but should be a follower"
+	@echo "You will have to manually CTRL-C to stop the test when you see the message, until I figure out how to do this automatically"
+	@echo ""
+	docker-compose -f system_integration_tests/leader-leader.yaml up

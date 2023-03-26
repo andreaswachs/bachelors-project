@@ -430,3 +430,9 @@ func (s *Server) RemoveLab(context context.Context, request *RemoveLabRequest) (
 
 	return RemoveLab(context, request)
 }
+
+func (s *Server) GetServerMode(context context.Context, request *GetServerModeRequest) (*GetServerModeResponse, error) {
+	return &GetServerModeResponse{
+		Mode: config.GetServerMode().String(),
+	}, nil
+}
