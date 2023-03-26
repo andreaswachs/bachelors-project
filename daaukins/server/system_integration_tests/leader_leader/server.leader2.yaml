@@ -1,0 +1,3 @@
+server_mode: leader
+service_port: 50052
+followers: []
