@@ -48,7 +48,7 @@ func ConnectMinions() ([]*minion, []*minion) {
 			}
 
 			if response.Mode == config.ModeLeader.String() {
-				log.Error().Msgf("Minion %s:%d is a leader, but it should be a follower", minionConfig.Address, minionConfig.Port)
+				log.Error().Msgf("Server %s:%d is a leader, but it should be a follower. The server will not be used.", minionConfig.Address, minionConfig.Port)
 				return
 			}
 
