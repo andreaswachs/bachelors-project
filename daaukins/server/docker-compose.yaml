@@ -7,9 +7,9 @@ services:
       context: .
       dockerfile: Dockerfile
     expose:
-      - 50051
+      - 50052
     ports:
-      - 50051:50051
+      - 50052:50051
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./server.yaml:/app/server.yaml:ro
