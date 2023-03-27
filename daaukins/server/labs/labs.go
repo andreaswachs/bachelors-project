@@ -368,7 +368,7 @@ func (l *lab) Start() error {
 			Memory: 64 * 1024 * 1024, // 64MB
 			Env: []string{
 				fmt.Sprintf("LOCAL_PORT=%d", l.frontend.GetProxyPort()),
-				"REMOTE_PORT=3000",
+				"REMOTE_PORT=8080",
 				fmt.Sprintf("REMOTE_IP=%s", frontendIP),
 				"PROTOCOL=tcp",
 			},
