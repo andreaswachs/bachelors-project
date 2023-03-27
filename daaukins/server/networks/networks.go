@@ -2,13 +2,19 @@ package networks
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/rs/zerolog/log"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/challenge"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
+)
+
+var (
+	hostPortsInUse = make(map[int]bool)
 )
 
 type Network struct {
@@ -33,6 +39,17 @@ func Provision(conf ProvisionNetworkOptions) (*Network, error) {
 	}, nil
 }
 
+func GetFreeHostPort() (int, error) {
+	for {
+		port := 40000 + rand.Intn(10000)
+
+		if _, ok := hostPortsInUse[port]; !ok {
+			hostPortsInUse[port] = true
+			return port, nil
+		}
+	}
+}
+
 func ConnectToBridge(container *docker.Container) (string, error) {
 	err := virtual.DockerClient().ConnectNetwork("bridge", docker.NetworkConnectionOptions{
 		Container: container.ID,
@@ -53,7 +70,11 @@ func ConnectToBridge(container *docker.Container) (string, error) {
 		}
 	}
 
-	return "", nil
+	log.Error().
+		Str("containerName", container.Name).
+		Msg("could not find container in network")
+
+	return "", fmt.Errorf("could not find container in network")
 }
 
 func (n *Network) Create() error {
@@ -110,13 +131,14 @@ func (n *Network) ConnectDHCP(container *docker.Container) error {
 	return n.connectContainer(container.ID, n.GetDHCPAddr())
 }
 
-func (n *Network) ConnectContainer(container *docker.Container) error {
+func (n *Network) ConnectContainer(container *docker.Container) (string, error) {
 	containerIP, err := ipPool().GetFreeIP(n.subnet)
 	if err != nil {
-		return err
+
+		return "", err
 	}
 
-	return n.connectContainer(container.ID, containerIP)
+	return containerIP, n.connectContainer(container.ID, containerIP)
 }
 
 func (n *Network) Disconnect(challenge *challenge.Challenge) error {
@@ -172,6 +194,13 @@ func (n *Network) connectContainer(containerID string, containerIP string) error
 	})
 
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("containerID", containerID).
+			Str("containerIP", containerIP).
+			Str("networkID", n.network.ID).
+			Msg("failed to connect container to network")
+
 		return err
 	}
 
