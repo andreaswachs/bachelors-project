@@ -21,9 +21,20 @@ type MinionConfig struct {
 	Port    int    `yaml:"port"`
 }
 
+type ContainerConfig struct {
+	Image string `yaml:"image"`
+}
+type DockerConfig struct {
+	Frontend ContainerConfig `yaml:"frontend"`
+	Proxy    ContainerConfig `yaml:"proxy"`
+	Dhcp     ContainerConfig `yaml:"dhcp"`
+	Dns      ContainerConfig `yaml:"dns"`
+}
+
 type Config struct {
 	ServerMode  Mode           `yaml:"server_mode"`
 	ServicePort int            `yaml:"service_port"`
+	Docker      DockerConfig   `yaml:"docker"`
 	Followers   []MinionConfig `yaml:"followers"`
 }
 
@@ -66,6 +77,10 @@ func GetServerID() string {
 
 func GetServicePort() int {
 	return config.ServicePort
+}
+
+func GetDockerConfig() DockerConfig {
+	return config.Docker
 }
 
 func load(file string) (Config, error) {
