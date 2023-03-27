@@ -7,6 +7,7 @@ package labs
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/challenge"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/frontend"
@@ -15,6 +16,7 @@ import (
 	"github.com/andreaswachs/bachelors-project/daaukins/server/networks"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/store"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
@@ -47,6 +49,7 @@ type lab struct {
 	network     *networks.Network
 	isStarted   bool
 	frontend    frontend.T
+	proxy       *docker.Container
 }
 
 type labChallenge struct {
@@ -189,10 +192,15 @@ func Provision(path string) (lab, error) {
 		challenges = append(challenges, newChallenge)
 	}
 
+	port, err := networks.GetFreeHostPort()
+	if err != nil {
+		return lab{}, err
+	}
+
 	frontend, err := frontend.Provision(&frontend.ProvisionFrontendOptions{
-		Network: network.GetName(),
-		DNS:     []string{network.GetDNSAddr()},
-		Port:    4000,
+		Network:   network.GetName(),
+		DNS:       []string{network.GetDNSAddr()},
+		ProxyPort: port,
 	})
 	if err != nil {
 		return lab{}, err
@@ -225,6 +233,11 @@ func (l *lab) Start() error {
 	log.Debug().Msgf("Starting lab %s, data: %v", l.name, l)
 
 	if err := l.network.Create(); err != nil {
+		log.Error().
+			Err(err).
+			Str("network", fmt.Sprintf("%+v", l.network)).
+			Msg("Could not create network")
+		go l.Remove()
 		return err
 	}
 
@@ -234,10 +247,16 @@ func (l *lab) Start() error {
 
 		// start the challenge, stop if an error occurs and remove all challenges
 		if err := challenge.Start(); err != nil {
+			log.Error().
+				Err(err).
+				Str("challenge", fmt.Sprintf("%+v", challenge)).
+				Msg("Could not start challenge, stopping lab")
+
 			for _, challenge := range l.challenges {
 				challenge.Remove()
 			}
 
+			go l.Remove()
 			return err
 		}
 
@@ -246,7 +265,8 @@ func (l *lab) Start() error {
 
 			// If a challenge could not be connected, lets just remove it and continue
 			challenge.Remove()
-			return err
+			log.Error().Err(err).Msg("Could not connect challenge to network, continuing")
+			continue
 		}
 
 		for _, hostname := range challenge.GetDNS() {
@@ -262,10 +282,15 @@ func (l *lab) Start() error {
 		ZoneFileEntries: zoneFileEntries,
 	})
 	if err != nil {
+		log.Error().Err(err).Msg("Could not provision DNS service")
+		go l.Remove()
 		return err
 	}
+	l.dnsService = dnsService
 
 	if err = l.network.ConnectDNS(dnsService.GetContainer()); err != nil {
+		log.Error().Err(err).Msg("Could not connect DNS service to network")
+		go l.Remove()
 		return err
 	}
 
@@ -274,35 +299,116 @@ func (l *lab) Start() error {
 		Subnet:      l.network.GetSubnet(),
 		NetworkMode: l.network.GetName(),
 	})
+	l.dhcpService = dhcpService
 	if err != nil {
+		log.Error().Err(err).Msg("Could not provision DHCP service")
+		go l.Remove()
 		return err
 	}
 
 	if err = l.network.ConnectDHCP(dhcpService.GetContainer()); err != nil {
+		go l.Remove()
 		return err
 	}
 
 	if err = dhcpService.Start(); err != nil {
+		log.Error().
+			Err(err).
+			Str("dhcp", fmt.Sprintf("%+v", dhcpService)).
+			Msg("Could not start DHCP service")
+		go l.Remove()
 		return err
 	}
 
 	if err = dnsService.Start(); err != nil {
+		log.Error().
+			Err(err).
+			Str("dns", fmt.Sprintf("%+v", dnsService)).
+			Msg("Could not start DNS service")
+
+		go l.Remove()
 		return err
 	}
 
 	if err = l.frontend.Start(); err != nil {
+		log.Error().
+			Err(err).
+			Str("frontend", fmt.Sprintf("%+v", l.frontend)).
+			Msg("Could not start frontend")
+
+		go l.Remove()
 		return err
 	}
 
-	cip, err := networks.ConnectToBridge(l.frontend.GetContainer())
+	frontendIP, err := networks.ConnectToBridge(l.frontend.GetContainer())
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("frontend", fmt.Sprintf("%+v", l.frontend)).
+			Msg("Could not connect frontend to bridge network")
+
+		go l.Remove()
 		return err
 	}
 
-	log.Debug().Msgf("Frontend connected to bridge network, IP: %s", cip)
+	// TODO: Move the deployment of the proxy into the frontend package
+	// - issues:
+	//   - knowing the IP to the frontend in the bridge network at the right time
 
-	l.dhcpService = dhcpService
+	// Deploy the proxy to the frontend
+	proxy, err := virtual.DockerClient().CreateContainer(docker.CreateContainerOptions{
+		Name: fmt.Sprintf("daaukins-proxy-%s", utils.RandomName()),
+		Config: &docker.Config{
+			Image: "andreaswachs/forward-proxy",
+			Labels: map[string]string{
+				"daaukins":         "true",
+				"daaukins.service": "proxy",
+			},
+			Memory: 64 * 1024 * 1024, // 64MB
+			Env: []string{
+				fmt.Sprintf("LOCAL_PORT=%d", l.frontend.GetProxyPort()),
+				"REMOTE_PORT=3000",
+				fmt.Sprintf("REMOTE_IP=%s", frontendIP),
+				"PROTOCOL=tcp",
+			},
+		},
+		HostConfig: &docker.HostConfig{
+			NetworkMode: "host",
+			PortBindings: map[docker.Port][]docker.PortBinding{
+				docker.Port(fmt.Sprintf("%d/tcp", l.frontend.GetProxyPort())): {
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: fmt.Sprint(l.frontend.GetProxyPort()),
+					},
+				},
+			},
+		}})
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("frontend", fmt.Sprintf("%+v", l.frontend)).
+			Str("network", fmt.Sprintf("%+v", l.network)).
+			Msg("Could not create proxy container")
+
+		go l.Remove()
+		return err
+	}
+
+	if err = virtual.DockerClient().StartContainer(proxy.ID, nil); err != nil {
+		log.Error().
+			Err(err).
+			Str("frontend", fmt.Sprintf("%+v", l.frontend)).
+			Str("network", fmt.Sprintf("%+v", l.network)).
+			Msg("Could not start proxy container")
+
+		go l.Remove()
+		return err
+	}
+
+	log.Info().Msgf("Frontend avaiable on port %d", l.frontend.GetProxyPort())
+
 	l.dnsService = dnsService
+	l.proxy = proxy
 
 	l.isStarted = true
 	labs[l.name] = l
@@ -313,28 +419,76 @@ func (l *lab) Start() error {
 // Remove removes the lab by removing all the challenges and then the isolated network
 func (l *lab) Remove() error {
 	// Remove all the challenge containers
-	for _, challenge := range l.challenges {
-		if err := challenge.Remove(); err != nil {
-			return err
-		}
+
+	wg := sync.WaitGroup{}
+
+	for _, theChallenge := range l.challenges {
+		wg.Add(1)
+
+		go func(c *challenge.Challenge) {
+			defer wg.Done()
+
+			if err := c.Remove(); err != nil {
+				log.Error().
+					Err(err).
+					Str("challenge", fmt.Sprintf("%+v", c)).
+					Msg("Error removing challenge")
+			}
+		}(theChallenge)
 	}
 
 	// Remove the DHCP and DNS service
-	if err := l.dhcpService.Stop(); err != nil {
-		log.Error().Err(err).Msg("Error stopping DHCP service")
+	if l.dhcpService != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := l.dhcpService.Stop(); err != nil {
+				log.Error().Err(err).Msg("Error stopping DHCP service")
+			}
+		}()
 	}
 
-	if err := l.dnsService.Stop(); err != nil {
-		log.Error().Err(err).Msg("Error stopping DNS service")
+	if l.dnsService != nil {
+		wg.Add(1)
+		go func() {
+			if err := l.dnsService.Stop(); err != nil {
+				log.Error().Err(err).Msg("Error stopping DNS service")
+			}
+		}()
 	}
 
-	if err := l.frontend.Stop(); err != nil {
-		log.Error().Err(err).Msg("Error stopping frontend")
+	if l.frontend != nil {
+		wg.Add(1)
+		go func() {
+			if err := l.frontend.Stop(); err != nil {
+				log.Error().Err(err).Msg("Error stopping frontend")
+			}
+		}()
 	}
 
-	if err := l.network.Remove(); err != nil {
-		log.Error().Err(err).Msg("Error removing network")
+	if l.proxy != nil {
+		wg.Add(1)
+		go func() {
+			if err := virtual.DockerClient().RemoveContainer(docker.RemoveContainerOptions{
+				ID:    l.proxy.ID,
+				Force: true,
+			}); err != nil {
+				log.Error().Err(err).Msg("Error removing proxy")
+			}
+		}()
 	}
+
+	if l.network != nil {
+		wg.Add(1)
+		go func() {
+			if err := l.network.Remove(); err != nil {
+				log.Error().Err(err).Msg("Error removing network")
+			}
+		}()
+	}
+
+	wg.Wait()
+	log.Info().Msgf("Lab %s removed", l.name)
 
 	delete(labs, l.name)
 

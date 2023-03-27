@@ -19,17 +19,19 @@ type T interface {
 	Start() error
 	Stop() error
 	GetContainer() *docker.Container
+	GetProxyPort() int
 }
 
 type frontend struct {
 	container *docker.Container
+	proxyPort int
 }
 
 type ProvisionFrontendOptions struct {
-	Network string
-	DNS     []string
-	Ip      string
-	Port    int
+	Network   string
+	DNS       []string
+	Ip        string
+	ProxyPort int
 }
 
 func Provision(options *ProvisionFrontendOptions) (*frontend, error) {
@@ -37,10 +39,8 @@ func Provision(options *ProvisionFrontendOptions) (*frontend, error) {
 		return nil, err
 	}
 
-	guestPort := fmt.Sprintf("%d/tcp", options.Port)
-
 	container, err := virtual.DockerClient().CreateContainer(docker.CreateContainerOptions{
-		Name: utils.RandomName(),
+		Name: fmt.Sprintf("daaukins-frontend-%s", utils.RandomName()),
 		Config: &docker.Config{
 			Image: "lscr.io/linuxserver/webtop:ubuntu-xfce",
 			Labels: map[string]string{
@@ -51,14 +51,6 @@ func Provision(options *ProvisionFrontendOptions) (*frontend, error) {
 		HostConfig: &docker.HostConfig{
 			NetworkMode: options.Network,
 			DNS:         options.DNS,
-			PortBindings: map[docker.Port][]docker.PortBinding{
-				docker.Port(guestPort): {
-					{
-						HostIP:   options.Ip,
-						HostPort: fmt.Sprint(options.Port),
-					},
-				},
-			},
 		},
 	})
 
@@ -68,6 +60,7 @@ func Provision(options *ProvisionFrontendOptions) (*frontend, error) {
 
 	return &frontend{
 		container: container,
+		proxyPort: options.ProxyPort,
 	}, nil
 }
 
@@ -97,6 +90,10 @@ func (f *frontend) GetContainer() *docker.Container {
 	return f.container
 }
 
+func (f *frontend) GetProxyPort() int {
+	return f.proxyPort
+}
+
 // validateProvisionFrontendOptions validates the options for provisioning a frontend.
 // It does not check the IP as that can be empty
 func validateProvisionFrontendOptions(options *ProvisionFrontendOptions) error {
@@ -104,7 +101,7 @@ func validateProvisionFrontendOptions(options *ProvisionFrontendOptions) error {
 		return ErrorNetwork
 	}
 
-	if options.Port == 0 {
+	if options.ProxyPort == 0 {
 		return ErrorPortEmpty
 	}
 
