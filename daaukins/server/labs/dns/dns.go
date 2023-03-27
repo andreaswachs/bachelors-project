@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 	docker "github.com/fsouza/go-dockerclient"
@@ -78,11 +79,13 @@ func Provision(options *ProvisionDNSOptions) (*DNSService, error) {
 
 	// Create container
 	container, err := virtual.DockerClient().CreateContainer(docker.CreateContainerOptions{
+		Name: fmt.Sprintf("daaukins-dns-%s", utils.RandomName()),
 		Config: &docker.Config{
-			Image:  "coredns/coredns:1.10.0",
+			Image:  config.GetDockerConfig().Dns.Image,
 			Memory: 128 * 1024 * 1024,
 			Labels: map[string]string{
-				"daaukins": "true",
+				"daaukins":         "true",
+				"daaukins-service": "dns",
 			},
 		},
 		HostConfig: &docker.HostConfig{

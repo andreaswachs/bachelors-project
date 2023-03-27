@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 
@@ -56,12 +57,13 @@ func Provision(options *ProvisionDHCPOptions) (*DHCPService, error) {
 	dhcpConfigFile.Write([]byte(confStr))
 
 	container, err := virtual.DockerClient().CreateContainer(docker.CreateContainerOptions{
-		Name: utils.RandomName(),
+		Name: fmt.Sprintf("daaukins-dhcp-%s", utils.RandomName()),
 		Config: &docker.Config{
-			Image:  "networkboot/dhcpd:1.2.0",
+			Image:  config.GetDockerConfig().Dhcp.Image,
 			Memory: 128 * 1024 * 1024,
 			Labels: map[string]string{
-				"daaukins": "true",
+				"daaukins":         "true",
+				"daaukins-service": "dhcp",
 			},
 			Cmd: []string{
 				"eth0",

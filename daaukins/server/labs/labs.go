@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/challenge"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/frontend"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs/dhcp"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs/dns"
@@ -359,7 +360,7 @@ func (l *lab) Start() error {
 	proxy, err := virtual.DockerClient().CreateContainer(docker.CreateContainerOptions{
 		Name: fmt.Sprintf("daaukins-proxy-%s", utils.RandomName()),
 		Config: &docker.Config{
-			Image: "andreaswachs/forward-proxy",
+			Image: config.GetDockerConfig().Proxy.Image,
 			Labels: map[string]string{
 				"daaukins":         "true",
 				"daaukins.service": "proxy",
