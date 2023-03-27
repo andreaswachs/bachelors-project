@@ -2,7 +2,7 @@ server_mode: leader
 service_port: 50051
 docker:
   frontend:
-    image: "lscr.io/linuxserver/webtop:ubuntu-xfce"
+    image: "andreaswachs/kali-docker:default"
   proxy:
     image: "andreaswachs/forward-proxy"
   dhcp:
