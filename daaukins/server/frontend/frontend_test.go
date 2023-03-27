@@ -9,9 +9,9 @@ import (
 
 func TestFrontendCanProvision(t *testing.T) {
 	fe, err := Provision(&ProvisionFrontendOptions{
-		Network: "bridge",
-		Ip:      "",
-		Port:    3000,
+		Network:   "bridge",
+		Ip:        "",
+		ProxyPort: 3000,
 	})
 
 	if err != nil {
@@ -52,8 +52,8 @@ func TestFrontendPortEmpty(t *testing.T) {
 
 func TestFrontendStart(t *testing.T) {
 	fe, err := Provision(&ProvisionFrontendOptions{
-		Network: "bridge",
-		Port:    3000,
+		Network:   "bridge",
+		ProxyPort: 3000,
 	})
 
 	if err != nil {
@@ -76,8 +76,8 @@ func TestFrontendStart(t *testing.T) {
 
 func TestFrontendStop(t *testing.T) {
 	fe, err := Provision(&ProvisionFrontendOptions{
-		Network: "bridge",
-		Port:    3000,
+		Network:   "bridge",
+		ProxyPort: 3000,
 	})
 
 	if err != nil {
