@@ -3,6 +3,7 @@ package frontend
 import (
 	"fmt"
 
+	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 	docker "github.com/fsouza/go-dockerclient"
@@ -42,7 +43,7 @@ func Provision(options *ProvisionFrontendOptions) (*frontend, error) {
 	container, err := virtual.DockerClient().CreateContainer(docker.CreateContainerOptions{
 		Name: fmt.Sprintf("daaukins-frontend-%s", utils.RandomName()),
 		Config: &docker.Config{
-			Image: "lscr.io/linuxserver/webtop:ubuntu-xfce",
+			Image: config.GetDockerConfig().Frontend.Image,
 			Labels: map[string]string{
 				"daaukins": "true",
 			},
