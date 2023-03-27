@@ -2,9 +2,12 @@ package networks
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"strconv"
 	"strings"
+
+	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 )
 
 const (
@@ -108,7 +111,28 @@ func getRandomLeftmostOctet() int {
 func getRandomOctet(leftmostOctet int) int {
 	switch leftmostOctet {
 	case 172:
-		return rand.Intn(16) + 16
+		// In the case of leftmostOctet being 172, ensure that we don't generate
+		// a random octet that will collide with the bridge network's second octet
+		bridgeNetwork, err := virtual.DockerClient().NetworkInfo("bridge")
+		if err != nil {
+			log.Panicf("failed to get bridge network info: %+v", err)
+		}
+
+		bridgeSubnet := bridgeNetwork.IPAM.Config[0].Subnet
+		bridgeOctets := strings.Split(bridgeSubnet, ".")
+		secondOctet, err := strconv.Atoi(bridgeOctets[1])
+		if err != nil {
+			log.Panicf("failed to parse bridge network subnet: %+v", err)
+		}
+
+		for safety := 0; safety < 10000; safety++ {
+			octet := rand.Intn(16) + 16
+			if octet != secondOctet {
+				return octet
+			}
+		}
+
+		log.Panicf("failed to generate random octet that does not collide with bridge network")
 	case 10:
 		return rand.Intn(255)
 	}
