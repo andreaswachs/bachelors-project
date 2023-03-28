@@ -48,6 +48,7 @@ func Provision(options *ProvisionFrontendOptions) (*frontend, error) {
 				"daaukins": "true",
 			},
 			Memory: 2 * 1024 * 1024 * 1024, // 2 GB
+			Tty:    true,
 		},
 		HostConfig: &docker.HostConfig{
 			NetworkMode: options.Network,
