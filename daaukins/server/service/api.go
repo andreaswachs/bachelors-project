@@ -4,8 +4,6 @@ package service
 
 import (
 	context "context"
-	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
@@ -62,8 +60,7 @@ func ScheduleLab(context context.Context, request *ScheduleLabRequest) (*Schedul
 		return nil, status.Errorf(codes.Internal, "failed to start lab: %v", err)
 	}
 
-	// TODO: is returning the name as ID right?
-	return &ScheduleLabResponse{Id: lab.GetName()}, nil
+	return &ScheduleLabResponse{Id: lab.GetId()}, nil
 
 }
 
@@ -72,8 +69,7 @@ func GetLab(context context.Context, request *GetLabRequest) (*GetLabResponse, e
 		return nil, status.Errorf(codes.InvalidArgument, "id is empty")
 	}
 
-	// TODO: is using name as ID right??
-	lab, err := labs.GetByName(request.Id)
+	lab, err := labs.GetById(request.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get lab: %v", err)
 	}
@@ -85,7 +81,7 @@ func GetLab(context context.Context, request *GetLabRequest) (*GetLabResponse, e
 	response := &GetLabResponse{
 		Lab: &LabDescription{
 			Name:          lab.GetName(),
-			Id:            lab.GetName(),
+			Id:            lab.GetId(),
 			NumChallenges: int32(len(lab.GetChallenges())),
 			NumUsers:      1, // PoC limitation: only deploy one frontend to each lab
 			ServerId:      config.GetServerID(),
@@ -97,17 +93,14 @@ func GetLab(context context.Context, request *GetLabRequest) (*GetLabResponse, e
 
 func GetLabs(context context.Context, _request *GetLabsRequest) (*GetLabsResponse, error) {
 	labs := labs.GetAll()
-	m, err := json.MarshalIndent(labs, "", "  ")
-	if err != nil {
-		fmt.Println("error:", err)
-	}
 
-	log.Debug().Int("numLabs", len(labs)).Str("labs", string(m)).Msg("GetLabs")
+	log.Debug().Int("numLabs", len(labs)).Msg("GetLabs")
+
 	labsResponse := make([]*LabDescription, len(labs))
 	for i, lab := range labs {
 		labsResponse[i] = &LabDescription{
 			Name:          lab.GetName(),
-			Id:            lab.GetName(),
+			Id:            lab.GetId(),
 			NumChallenges: int32(len(lab.GetChallenges())),
 			NumUsers:      1, // PoC limitation: only deploy one frontend to each lab
 			ServerId:      config.GetServerID(),
@@ -126,7 +119,7 @@ func RemoveLab(context context.Context, request *RemoveLabRequest) (*RemoveLabRe
 		return nil, status.Errorf(codes.InvalidArgument, "id is empty")
 	}
 
-	lab, err := labs.GetByName(request.Id)
+	lab, err := labs.GetById(request.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get lab: %v", err)
 	}

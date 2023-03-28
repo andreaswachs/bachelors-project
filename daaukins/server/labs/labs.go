@@ -44,6 +44,7 @@ type networkService interface {
 // lab is the data bearing struct for a lab
 type lab struct {
 	name        string
+	id          string
 	challenges  []*challenge.Challenge
 	dhcpService networkService
 	dnsService  networkService
@@ -76,11 +77,21 @@ func init() {
 
 // GetByName returns a lab with a given name. If the lab does not exist, an error is returned
 func GetByName(name string) (*lab, error) {
-	if labs[name] == nil {
-		return nil, fmt.Errorf("%w: %s", ErrorLabDoesntExist, name)
+	for _, lab := range labs {
+		if lab.name == name {
+			return lab, nil
+		}
 	}
 
-	return labs[name], nil
+	return nil, fmt.Errorf("%w: %s", ErrorLabDoesntExist, name)
+}
+
+func GetById(id string) (*lab, error) {
+	if lab, ok := labs[id]; ok {
+		return lab, nil
+	}
+
+	return nil, fmt.Errorf("%w: %s", ErrorLabDoesntExist, id)
 }
 
 // GetAll returns all the labs that have been provisioned
@@ -88,9 +99,7 @@ func GetAll() []*lab {
 	labsBuffer := make([]*lab, 0)
 
 	for _, lab := range labs {
-		if lab != nil {
-			labsBuffer = append(labsBuffer, lab)
-		}
+		labsBuffer = append(labsBuffer, lab)
 	}
 
 	return labsBuffer
@@ -209,12 +218,18 @@ func Provision(path string) (lab, error) {
 
 	thisLab := lab{
 		name:       labDTO.Name,
+		id:         newId(),
 		challenges: challenges,
 		network:    network,
 		frontend:   frontend,
 	}
 
-	labs[labDTO.Name] = &thisLab
+	log.Info().
+		Str("name", thisLab.name).
+		Str("id", thisLab.id).
+		Msg("Provisioned lab")
+
+	labs[thisLab.id] = &thisLab
 
 	return thisLab, nil
 }
@@ -231,7 +246,10 @@ func RemoveAll() error {
 
 // Start starts the lab by starting all the challenges and connecting them to the isolated network
 func (l *lab) Start() error {
-	log.Debug().Msgf("Starting lab %s, data: %v", l.name, l)
+	log.Info().
+		Str("name", l.name).
+		Str("id", l.id).
+		Msg("Starting lab")
 
 	if err := l.network.Create(); err != nil {
 		log.Error().
@@ -368,7 +386,7 @@ func (l *lab) Start() error {
 			Memory: 64 * 1024 * 1024, // 64MB
 			Env: []string{
 				fmt.Sprintf("LOCAL_PORT=%d", l.frontend.GetProxyPort()),
-				"REMOTE_PORT=3000",
+				"REMOTE_PORT=8080",
 				fmt.Sprintf("REMOTE_IP=%s", frontendIP),
 				"PROTOCOL=tcp",
 			},
@@ -376,7 +394,7 @@ func (l *lab) Start() error {
 		HostConfig: &docker.HostConfig{
 			NetworkMode: "host",
 			PortBindings: map[docker.Port][]docker.PortBinding{
-				docker.Port(fmt.Sprintf("%d/tcp", l.frontend.GetProxyPort())): {
+				docker.Port("8080/tcp"): {
 					{
 						HostIP:   "0.0.0.0",
 						HostPort: fmt.Sprint(l.frontend.GetProxyPort()),
@@ -500,6 +518,10 @@ func (l *lab) GetName() string {
 	return l.name
 }
 
+func (l *lab) GetId() string {
+	return l.id
+}
+
 func (l *lab) GetChallenges() []*challenge.Challenge {
 	return l.challenges
 }
@@ -516,4 +538,22 @@ func load(path string) (labDTO, error) {
 	}
 
 	return lab, nil
+}
+
+func newId() string {
+	n := func() string {
+		return fmt.Sprintf("daaukins-lab-%s%s", utils.RandomShortName(), utils.RandomShortName())
+	}
+	id := n()
+
+	for safety := 0; safety < 1_000_000; safety++ {
+		if _, ok := labs[id]; !ok {
+			return id
+		}
+
+		id = n()
+	}
+
+	log.Panic().Msg("Could not generate a unique ID for the lab")
+	return ""
 }

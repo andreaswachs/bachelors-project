@@ -251,14 +251,25 @@ func (s *Server) ScheduleLab(context context.Context, request *ScheduleLabReques
 }
 func (s *Server) GetLab(context context.Context, request *GetLabRequest) (*GetLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
-		// Ask all minions for the given lab
-		// If we find it, return it
-		// If we don't find it, return an error
-
 		wg := sync.WaitGroup{}
 		responses := make([]*askGetLabResponse, 0)
 		responseLock := sync.Mutex{}
 
+		// Check if we have the lab
+		lab, err := labs.GetById(request.Id)
+		if err == nil {
+			return &GetLabResponse{
+				Lab: &LabDescription{
+					Id:            lab.GetId(),
+					Name:          lab.GetName(),
+					NumChallenges: int32(len(lab.GetChallenges())),
+					NumUsers:      1,
+					ServerId:      config.GetServerID(),
+				},
+			}, nil
+		}
+
+		// Ask all the followers if the lab is located on one of them
 		for _, connMinion := range connectedMinions {
 			wg.Add(1)
 			go func(m *minion) {
@@ -308,13 +319,21 @@ func (s *Server) GetLab(context context.Context, request *GetLabRequest) (*GetLa
 }
 func (s *Server) GetLabs(context context.Context, request *GetLabsRequest) (*GetLabsResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
-		// Ask all minions for their labs
-		// If we find any, return them
-		// If we don't find any, return an error
-
 		wg := sync.WaitGroup{}
 		responses := make([]*GetLabsResponse, 0)
 		responseLock := sync.Mutex{}
+
+		// Get labs from ourselves
+		localLabs, err := GetLabs(context, request)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to get labs from self")
+		}
+
+		log.Debug().Int("labs", len(localLabs.Labs)).Msg("Got labs from self")
+
+		if localLabs.Labs != nil && len(localLabs.Labs) > 0 {
+			responses = append(responses, localLabs)
+		}
 
 		for _, connMinion := range connectedMinions {
 			wg.Add(1)
