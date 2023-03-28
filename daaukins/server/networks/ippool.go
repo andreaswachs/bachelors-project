@@ -81,7 +81,10 @@ func (ipbank *IPPool) GetFreeIP(subnet string) (string, error) {
 
 	ipPrefix := fmt.Sprintf("%s.%s.%s", octets[0], octets[1], octets[2])
 
-	return fmt.Sprintf("%s.%d", ipPrefix, ipbank.freeIps[subnet][0]), nil
+	usedOctet := ipbank.freeIps[subnet][0]
+	ipbank.freeIps[subnet] = ipbank.freeIps[subnet][1:]
+
+	return fmt.Sprintf("%s.%d", ipPrefix, usedOctet), nil
 }
 
 // GetSubnet returns a random subnet that is not in use
