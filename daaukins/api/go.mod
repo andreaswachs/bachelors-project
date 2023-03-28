@@ -1,4 +1,4 @@
-module github.com/andreaswachs/bachelor-project/daaukins/api
+module github.com/andreaswachs/bachelors-project/daaukins/api
 
 go 1.20
 
