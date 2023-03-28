@@ -389,7 +389,7 @@ func (s *Server) RemoveLab(context context.Context, request *RemoveLabRequest) (
 		responseLock := sync.Mutex{}
 
 		// Check if the lab is hosted on this server
-		lab, err := labs.GetByName(request.Id)
+		lab, err := labs.GetById(request.Id)
 		if err == nil {
 			if lab != nil {
 				err = lab.Remove()
