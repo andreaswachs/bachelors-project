@@ -40,6 +40,7 @@ type ZoneFileEntry struct {
 
 type ProvisionDNSOptions struct {
 	ZoneFileEntries []ZoneFileEntry
+	LabID           string
 }
 
 func Provision(options *ProvisionDNSOptions) (*DNSService, error) {
@@ -84,8 +85,9 @@ func Provision(options *ProvisionDNSOptions) (*DNSService, error) {
 			Image:  config.GetDockerConfig().Dns.Image,
 			Memory: 128 * 1024 * 1024,
 			Labels: map[string]string{
-				"daaukins":         "true",
-				"daaukins-service": "dns",
+				"daaukins":         "network-service",
+				"daaukins.service": "dns",
+				"daaukins.lab":     options.LabID,
 			},
 		},
 		HostConfig: &docker.HostConfig{

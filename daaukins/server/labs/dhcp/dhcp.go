@@ -21,6 +21,7 @@ type ProvisionDHCPOptions struct {
 	DNSAddr     string
 	Subnet      string
 	NetworkMode string
+	LabID       string
 }
 
 func format(subnet string, lastOctet int) string {
@@ -62,8 +63,9 @@ func Provision(options *ProvisionDHCPOptions) (*DHCPService, error) {
 			Image:  config.GetDockerConfig().Dhcp.Image,
 			Memory: 128 * 1024 * 1024,
 			Labels: map[string]string{
-				"daaukins":         "true",
-				"daaukins-service": "dhcp",
+				"daaukins":         "network-service",
+				"daaukins.service": "dhcp",
+				"daaukins.lab":     options.LabID,
 			},
 			Cmd: []string{
 				"eth0",

@@ -21,10 +21,12 @@ type Network struct {
 	network *docker.Network
 	subnet  string
 	name    string
+	labID   string
 }
 
 type ProvisionNetworkOptions struct {
 	Subnet string
+	LabID  string
 }
 
 func Provision(conf ProvisionNetworkOptions) (*Network, error) {
@@ -36,6 +38,7 @@ func Provision(conf ProvisionNetworkOptions) (*Network, error) {
 	return &Network{
 		subnet: subnet,
 		name:   utils.RandomName(),
+		labID:  conf.LabID,
 	}, nil
 }
 
@@ -90,7 +93,8 @@ func (n *Network) Create() error {
 				Subnet: n.subnet,
 			}}},
 		Labels: map[string]string{
-			"daaukins": "network",
+			"daaukins":     "network",
+			"daaukins.lab": n.labID,
 		},
 	})
 

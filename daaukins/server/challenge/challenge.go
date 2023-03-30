@@ -12,6 +12,7 @@ type ProvisionChallengeOptions struct {
 	Image       string
 	DNSServers  []string
 	DNSSettings []string
+	LabID       string
 }
 
 type Challenge struct {
@@ -30,11 +31,12 @@ func Provision(conf *ProvisionChallengeOptions) (*Challenge, error) {
 	}
 
 	containerConfiguration := &docker.CreateContainerOptions{
-		Name: fmt.Sprintf("daaukins-%s", uuid.New().String()),
+		Name: fmt.Sprintf("daaukins-challenge-%s", uuid.New().String()),
 		Config: &docker.Config{
 			Image: conf.Image,
 			Labels: map[string]string{
-				"daaukins": "true",
+				"daaukins":     "challenge",
+				"daaukins.lab": conf.LabID,
 			},
 		},
 		HostConfig: &docker.HostConfig{
