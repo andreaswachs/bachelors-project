@@ -9,6 +9,7 @@ import (
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs"
+	"github.com/andreaswachs/bachelors-project/daaukins/service"
 	"github.com/rs/zerolog/log"
 	grpc "google.golang.org/grpc"
 )
@@ -21,24 +22,24 @@ var (
 )
 
 type minion struct {
-	client ServiceClient
+	client service.ServiceClient
 	config config.MinionConfig
 }
 
 type askHasCapacityResponse struct {
-	response *HaveCapacityResponse
+	response *service.HaveCapacityResponse
 	minion   *minion
 	isSelf   bool
 }
 
 type askGetLabResponse struct {
-	response *GetLabResponse
+	response *service.GetLabResponse
 	minion   *minion
 	isSelf   bool
 }
 
 type Server struct {
-	UnimplementedServiceServer
+	service.UnimplementedServiceServer
 }
 
 func Initialize() {
@@ -49,7 +50,7 @@ func Initialize() {
 	// grpc.UnaryInterceptor(middlefunc),
 	)
 
-	RegisterServiceServer(server, new(Server))
+	service.RegisterServiceServer(server, new(Server))
 	go func() {
 		l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 		if err != nil {
@@ -68,7 +69,7 @@ func Stop() {
 	server.GracefulStop()
 }
 
-func (s *Server) HaveCapacity(context context.Context, request *HaveCapacityRequest) (*HaveCapacityResponse, error) {
+func (s *Server) HaveCapacity(context context.Context, request *service.HaveCapacityRequest) (*service.HaveCapacityResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		// If we're the leader, then we will query all minions and return true if a single minion has capacity
 
@@ -92,7 +93,7 @@ func (s *Server) HaveCapacity(context context.Context, request *HaveCapacityRequ
 		}
 
 		responses = append(responses, &askHasCapacityResponse{
-			response: &HaveCapacityResponse{
+			response: &service.HaveCapacityResponse{
 				HasCapacity: hasCapacity,
 				Capacity:    int32(capacity),
 			},
@@ -142,14 +143,14 @@ func (s *Server) HaveCapacity(context context.Context, request *HaveCapacityRequ
 
 		if !hasAnyCapacity {
 			log.Debug().Msg("No minion has capacity")
-			return &HaveCapacityResponse{
+			return &service.HaveCapacityResponse{
 				HasCapacity: false,
 				Capacity:    int32(maxCapacity),
 			}, nil
 		}
 
 		log.Debug().Msg("At least one minion has capacity")
-		return &HaveCapacityResponse{
+		return &service.HaveCapacityResponse{
 			HasCapacity: true,
 			Capacity:    int32(maxCapacity),
 		}, nil
@@ -159,7 +160,7 @@ func (s *Server) HaveCapacity(context context.Context, request *HaveCapacityRequ
 	log.Debug().Msg("Checking if we have capacity")
 	return HaveCapacity(context, request)
 }
-func (s *Server) ScheduleLab(context context.Context, request *ScheduleLabRequest) (*ScheduleLabResponse, error) {
+func (s *Server) ScheduleLab(context context.Context, request *service.ScheduleLabRequest) (*service.ScheduleLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		// Ask all minions what their capacity is and compare them including our own capacity.
 		// Schedule the lab on the minion with the most capacity (this instance included)
@@ -186,7 +187,7 @@ func (s *Server) ScheduleLab(context context.Context, request *ScheduleLabReques
 			}
 
 			responses = append(responses, &askHasCapacityResponse{
-				response: &HaveCapacityResponse{
+				response: &service.HaveCapacityResponse{
 					HasCapacity: true,
 					Capacity:    int32(capacity),
 				},
@@ -199,7 +200,7 @@ func (s *Server) ScheduleLab(context context.Context, request *ScheduleLabReques
 			wg.Add(1)
 			go func(m *minion) {
 				defer wg.Done()
-				response, err := m.client.HaveCapacity(context, &HaveCapacityRequest{
+				response, err := m.client.HaveCapacity(context, &service.HaveCapacityRequest{
 					Lab: request.Lab,
 				})
 				if err != nil {
@@ -249,7 +250,7 @@ func (s *Server) ScheduleLab(context context.Context, request *ScheduleLabReques
 	// In this case, this server instance is a minion and we'll just schedule the lab on ourself
 	return ScheduleLab(context, request)
 }
-func (s *Server) GetLab(context context.Context, request *GetLabRequest) (*GetLabResponse, error) {
+func (s *Server) GetLab(context context.Context, request *service.GetLabRequest) (*service.GetLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		wg := sync.WaitGroup{}
 		responses := make([]*askGetLabResponse, 0)
@@ -258,8 +259,8 @@ func (s *Server) GetLab(context context.Context, request *GetLabRequest) (*GetLa
 		// Check if we have the lab
 		lab, err := labs.GetById(request.Id)
 		if err == nil {
-			return &GetLabResponse{
-				Lab: &LabDescription{
+			return &service.GetLabResponse{
+				Lab: &service.LabDescription{
 					Id:            lab.GetId(),
 					Name:          lab.GetName(),
 					NumChallenges: int32(len(lab.GetChallenges())),
@@ -274,7 +275,7 @@ func (s *Server) GetLab(context context.Context, request *GetLabRequest) (*GetLa
 			wg.Add(1)
 			go func(m *minion) {
 				defer wg.Done()
-				response, err := m.client.GetLab(context, &GetLabRequest{
+				response, err := m.client.GetLab(context, &service.GetLabRequest{
 					Id: request.Id,
 				})
 				if err != nil {
@@ -317,10 +318,10 @@ func (s *Server) GetLab(context context.Context, request *GetLabRequest) (*GetLa
 
 	return GetLab(context, request)
 }
-func (s *Server) GetLabs(context context.Context, request *GetLabsRequest) (*GetLabsResponse, error) {
+func (s *Server) GetLabs(context context.Context, request *service.GetLabsRequest) (*service.GetLabsResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		wg := sync.WaitGroup{}
-		responses := make([]*GetLabsResponse, 0)
+		responses := make([]*service.GetLabsResponse, 0)
 		responseLock := sync.Mutex{}
 
 		// Get labs from ourselves
@@ -339,7 +340,7 @@ func (s *Server) GetLabs(context context.Context, request *GetLabsRequest) (*Get
 			wg.Add(1)
 			go func(m *minion) {
 				defer wg.Done()
-				response, err := m.client.GetLabs(context, &GetLabsRequest{})
+				response, err := m.client.GetLabs(context, &service.GetLabsRequest{})
 				if err != nil {
 					log.Error().Err(err).Msgf("Failed to get labs from minion %s:%d", m.config.Address, m.config.Port)
 				}
@@ -359,13 +360,13 @@ func (s *Server) GetLabs(context context.Context, request *GetLabsRequest) (*Get
 
 		if len(responses) == 0 {
 			log.Debug().Msg("No minions have labs")
-			return &GetLabsResponse{
-				Labs: make([]*LabDescription, 0),
+			return &service.GetLabsResponse{
+				Labs: make([]*service.LabDescription, 0),
 			}, nil
 		}
 
-		response := &GetLabsResponse{
-			Labs: make([]*LabDescription, 0),
+		response := &service.GetLabsResponse{
+			Labs: make([]*service.LabDescription, 0),
 		}
 
 		for _, r := range responses {
@@ -377,7 +378,7 @@ func (s *Server) GetLabs(context context.Context, request *GetLabsRequest) (*Get
 
 	return GetLabs(context, request)
 }
-func (s *Server) RemoveLab(context context.Context, request *RemoveLabRequest) (*RemoveLabResponse, error) {
+func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRequest) (*service.RemoveLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		// Ask all minions for the given lab
 		// If we find it, remove it
@@ -398,7 +399,7 @@ func (s *Server) RemoveLab(context context.Context, request *RemoveLabRequest) (
 					return nil, err
 				}
 
-				return &RemoveLabResponse{}, nil
+				return &service.RemoveLabResponse{}, nil
 
 			}
 		}
@@ -407,7 +408,7 @@ func (s *Server) RemoveLab(context context.Context, request *RemoveLabRequest) (
 			wg.Add(1)
 			go func(m *minion) {
 				defer wg.Done()
-				response, err := m.client.GetLab(context, &GetLabRequest{
+				response, err := m.client.GetLab(context, &service.GetLabRequest{
 					Id: request.Id,
 				})
 				if err != nil {
@@ -436,7 +437,7 @@ func (s *Server) RemoveLab(context context.Context, request *RemoveLabRequest) (
 		}
 
 		// Remove the lab from the minion
-		_, err = theMinion.client.RemoveLab(context, &RemoveLabRequest{
+		_, err = theMinion.client.RemoveLab(context, &service.RemoveLabRequest{
 			Id: request.Id,
 		})
 		if err != nil {
@@ -444,14 +445,14 @@ func (s *Server) RemoveLab(context context.Context, request *RemoveLabRequest) (
 			return nil, err
 		}
 
-		return &RemoveLabResponse{}, nil
+		return &service.RemoveLabResponse{}, nil
 	}
 
 	return RemoveLab(context, request)
 }
 
-func (s *Server) GetServerMode(context context.Context, request *GetServerModeRequest) (*GetServerModeResponse, error) {
-	return &GetServerModeResponse{
+func (s *Server) GetServerMode(context context.Context, request *service.GetServerModeRequest) (*service.GetServerModeResponse, error) {
+	return &service.GetServerModeResponse{
 		Mode: config.GetServerMode().String(),
 	}, nil
 }
