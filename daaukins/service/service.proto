@@ -80,6 +80,7 @@ message GetLabsResponse {
 
 message RemoveLabRequest {
     string id = 1;
+    string server_id = 2;
 }
 
 message RemoveLabResponse {
