@@ -8,12 +8,13 @@ import (
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs"
+	"github.com/andreaswachs/bachelors-project/daaukins/service"
 	"github.com/rs/zerolog/log"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 )
 
-func HaveCapacity(context context.Context, request *HaveCapacityRequest) (*HaveCapacityResponse, error) {
+func HaveCapacity(context context.Context, request *service.HaveCapacityRequest) (*service.HaveCapacityResponse, error) {
 	if request.Lab == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "lab is empty")
 	}
@@ -33,7 +34,7 @@ func HaveCapacity(context context.Context, request *HaveCapacityRequest) (*HaveC
 		return nil, status.Errorf(codes.Internal, "failed to get capacity: %v", err)
 	}
 
-	response := &HaveCapacityResponse{
+	response := &service.HaveCapacityResponse{
 		HasCapacity: hasCapacity,
 		Capacity:    int32(capacity),
 	}
@@ -41,7 +42,7 @@ func HaveCapacity(context context.Context, request *HaveCapacityRequest) (*HaveC
 	return response, nil
 }
 
-func ScheduleLab(context context.Context, request *ScheduleLabRequest) (*ScheduleLabResponse, error) {
+func ScheduleLab(context context.Context, request *service.ScheduleLabRequest) (*service.ScheduleLabResponse, error) {
 	if request.Lab == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "lab is empty")
 	}
@@ -60,11 +61,11 @@ func ScheduleLab(context context.Context, request *ScheduleLabRequest) (*Schedul
 		return nil, status.Errorf(codes.Internal, "failed to start lab: %v", err)
 	}
 
-	return &ScheduleLabResponse{Id: lab.GetId()}, nil
+	return &service.ScheduleLabResponse{Id: lab.GetId()}, nil
 
 }
 
-func GetLab(context context.Context, request *GetLabRequest) (*GetLabResponse, error) {
+func GetLab(context context.Context, request *service.GetLabRequest) (*service.GetLabResponse, error) {
 	if request.Id == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "id is empty")
 	}
@@ -78,8 +79,8 @@ func GetLab(context context.Context, request *GetLabRequest) (*GetLabResponse, e
 		return nil, status.Errorf(codes.NotFound, "lab not found")
 	}
 
-	response := &GetLabResponse{
-		Lab: &LabDescription{
+	response := &service.GetLabResponse{
+		Lab: &service.LabDescription{
 			Name:          lab.GetName(),
 			Id:            lab.GetId(),
 			NumChallenges: int32(len(lab.GetChallenges())),
@@ -91,14 +92,14 @@ func GetLab(context context.Context, request *GetLabRequest) (*GetLabResponse, e
 	return response, nil
 }
 
-func GetLabs(context context.Context, _request *GetLabsRequest) (*GetLabsResponse, error) {
+func GetLabs(context context.Context, _request *service.GetLabsRequest) (*service.GetLabsResponse, error) {
 	labs := labs.GetAll()
 
 	log.Debug().Int("numLabs", len(labs)).Msg("GetLabs")
 
-	labsResponse := make([]*LabDescription, len(labs))
+	labsResponse := make([]*service.LabDescription, len(labs))
 	for i, lab := range labs {
-		labsResponse[i] = &LabDescription{
+		labsResponse[i] = &service.LabDescription{
 			Name:          lab.GetName(),
 			Id:            lab.GetId(),
 			NumChallenges: int32(len(lab.GetChallenges())),
@@ -107,14 +108,14 @@ func GetLabs(context context.Context, _request *GetLabsRequest) (*GetLabsRespons
 		}
 	}
 
-	response := &GetLabsResponse{
+	response := &service.GetLabsResponse{
 		Labs: labsResponse,
 	}
 
 	return response, nil
 }
 
-func RemoveLab(context context.Context, request *RemoveLabRequest) (*RemoveLabResponse, error) {
+func RemoveLab(context context.Context, request *service.RemoveLabRequest) (*service.RemoveLabResponse, error) {
 	if request.Id == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "id is empty")
 	}
@@ -132,7 +133,7 @@ func RemoveLab(context context.Context, request *RemoveLabRequest) (*RemoveLabRe
 		return nil, status.Errorf(codes.Internal, "failed to stop lab: %v", err)
 	}
 
-	return &RemoveLabResponse{
+	return &service.RemoveLabResponse{
 		Ok: true,
 	}, nil
 }
