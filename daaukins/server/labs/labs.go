@@ -98,8 +98,10 @@ func GetById(id string) (*lab, error) {
 func GetAll() []*lab {
 	labsBuffer := make([]*lab, 0)
 
-	for _, lab := range labs {
-		labsBuffer = append(labsBuffer, lab)
+	for id, aLab := range labs {
+		if id == aLab.id {
+			labsBuffer = append(labsBuffer, aLab)
+		}
 	}
 
 	return labsBuffer
@@ -139,7 +141,9 @@ func HasCapacity(path string) (bool, error) {
 		return false, err
 	}
 
-	return availableMemory >= totalMemoryRequired, nil
+	// Temporary ensure no labs are provisioned if the server is in leader mode
+	return !(config.GetServerMode().String() == config.ModeLeader.String()) &&
+		availableMemory >= totalMemoryRequired, nil
 }
 
 func GetCapacity() (int, error) {
@@ -493,7 +497,7 @@ func (l *lab) Remove() error {
 
 	log.Info().Msgf("Lab %s removed", l.name)
 
-	delete(labs, l.name)
+	delete(labs, l.id)
 
 	return nil
 }
