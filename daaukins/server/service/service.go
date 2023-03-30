@@ -405,7 +405,6 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 				}
 
 				return &service.RemoveLabResponse{}, nil
-
 			}
 		}
 
@@ -418,6 +417,11 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 				})
 				if err != nil {
 					log.Error().Err(err).Msgf("Failed to get lab from minion %s:%d", m.config.Address, m.config.Port)
+				}
+
+				if response == nil {
+					log.Error().Msg("Get lab response from follower was nil!")
+					return
 				}
 
 				if response.Lab != nil {
