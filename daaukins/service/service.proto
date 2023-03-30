@@ -57,6 +57,7 @@ message GetLabRequest {
 // GetLabResponse
 message GetLabResponse {
     LabDescription lab = 1;
+    string server_id = 2;
 }
 
 message LabDescription {
