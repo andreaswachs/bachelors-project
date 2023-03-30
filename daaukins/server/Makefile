@@ -10,6 +10,8 @@ grpc-build:
 grpc-debug:
 	evans --path service --proto service.proto --host localhost
 
+grpc-debug-docker:
+	evans --path service --proto service.proto --host localhost --port 50052
 dev:
 	go build
 	./server
