@@ -152,6 +152,8 @@ func GetCapacity() (int, error) {
 }
 
 func Provision(path string) (lab, error) {
+	labId := newId()
+
 	labDTO, err := load(path)
 	if err != nil {
 		return lab{}, err
@@ -165,7 +167,10 @@ func Provision(path string) (lab, error) {
 		return lab{}, ErrorLabNoChallenges
 	}
 
-	network, err := networks.Provision(networks.ProvisionNetworkOptions{})
+	network, err := networks.Provision(networks.ProvisionNetworkOptions{
+		LabID: labId,
+	})
+
 	if err != nil {
 		return lab{}, err
 	}
@@ -194,6 +199,7 @@ func Provision(path string) (lab, error) {
 			Image:       storedChallenge.Image,
 			DNSServers:  []string{network.GetDNSAddr()},
 			DNSSettings: labChallenge.Dns,
+			LabID:       labId,
 		})
 		if err != nil {
 			return lab{}, err
@@ -211,6 +217,7 @@ func Provision(path string) (lab, error) {
 		Network:   network.GetName(),
 		DNS:       []string{network.GetDNSAddr()},
 		ProxyPort: port,
+		LabID:     labId,
 	})
 	if err != nil {
 		return lab{}, err
@@ -218,7 +225,7 @@ func Provision(path string) (lab, error) {
 
 	thisLab := lab{
 		name:       labDTO.Name,
-		id:         newId(),
+		id:         labId,
 		challenges: challenges,
 		network:    network,
 		frontend:   frontend,
@@ -299,6 +306,7 @@ func (l *lab) Start() error {
 	// Provision and start the DNS service
 	dnsService, err := dns.Provision(&dns.ProvisionDNSOptions{
 		ZoneFileEntries: zoneFileEntries,
+		LabID:           l.id,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Could not provision DNS service")
@@ -317,6 +325,7 @@ func (l *lab) Start() error {
 		DNSAddr:     l.network.GetDNSAddr(),
 		Subnet:      l.network.GetSubnet(),
 		NetworkMode: l.network.GetName(),
+		LabID:       l.id,
 	})
 	l.dhcpService = dhcpService
 	if err != nil {
@@ -382,6 +391,7 @@ func (l *lab) Start() error {
 			Labels: map[string]string{
 				"daaukins":         "true",
 				"daaukins.service": "proxy",
+				"daaukins.lab":     l.id,
 			},
 			Memory: 64 * 1024 * 1024, // 64MB
 			Env: []string{
@@ -441,72 +451,46 @@ func (l *lab) Remove() error {
 
 	wg := sync.WaitGroup{}
 
-	for _, theChallenge := range l.challenges {
+	// Find all the containers for the given lab via the `daaukins.lab` label
+	containers, err := virtual.DockerClient().ListContainers(docker.ListContainersOptions{
+		All: true,
+		Filters: map[string][]string{
+			"label": {
+				fmt.Sprintf("daaukins.lab=%s", l.id),
+			},
+		},
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Error listing containers for the lab")
+		return err
+	}
+
+	for _, container := range containers {
 		wg.Add(1)
-
-		go func(c *challenge.Challenge) {
+		go func(cid string) {
 			defer wg.Done()
-
-			if err := c.Remove(); err != nil {
+			err := virtual.DockerClient().RemoveContainer(docker.RemoveContainerOptions{
+				ID:    cid,
+				Force: true,
+			})
+			if err != nil {
 				log.Error().
 					Err(err).
-					Str("challenge", fmt.Sprintf("%+v", c)).
-					Msg("Error removing challenge")
+					Str("container", cid).
+					Msg("Error removing container")
 			}
-		}(theChallenge)
+		}(container.ID)
 	}
 
-	// Remove the DHCP and DNS service
-	if l.dhcpService != nil {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := l.dhcpService.Stop(); err != nil {
-				log.Error().Err(err).Msg("Error stopping DHCP service")
-			}
-		}()
-	}
-
-	if l.dnsService != nil {
-		wg.Add(1)
-		go func() {
-			if err := l.dnsService.Stop(); err != nil {
-				log.Error().Err(err).Msg("Error stopping DNS service")
-			}
-		}()
-	}
-
-	if l.frontend != nil {
-		wg.Add(1)
-		go func() {
-			if err := l.frontend.Stop(); err != nil {
-				log.Error().Err(err).Msg("Error stopping frontend")
-			}
-		}()
-	}
-
-	if l.proxy != nil {
-		wg.Add(1)
-		go func() {
-			if err := virtual.DockerClient().RemoveContainer(docker.RemoveContainerOptions{
-				ID:    l.proxy.ID,
-				Force: true,
-			}); err != nil {
-				log.Error().Err(err).Msg("Error removing proxy")
-			}
-		}()
-	}
+	// We will wait for all containers to be shut down before removing the network
+	wg.Wait()
 
 	if l.network != nil {
-		wg.Add(1)
-		go func() {
-			if err := l.network.Remove(); err != nil {
-				log.Error().Err(err).Msg("Error removing network")
-			}
-		}()
+		if err := l.network.Remove(); err != nil {
+			log.Error().Err(err).Msg("Error removing network")
+		}
 	}
 
-	wg.Wait()
 	log.Info().Msgf("Lab %s removed", l.name)
 
 	delete(labs, l.name)

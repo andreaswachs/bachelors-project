@@ -33,6 +33,7 @@ type ProvisionFrontendOptions struct {
 	DNS       []string
 	Ip        string
 	ProxyPort int
+	LabID     string
 }
 
 func Provision(options *ProvisionFrontendOptions) (*frontend, error) {
@@ -45,7 +46,8 @@ func Provision(options *ProvisionFrontendOptions) (*frontend, error) {
 		Config: &docker.Config{
 			Image: config.GetDockerConfig().Frontend.Image,
 			Labels: map[string]string{
-				"daaukins": "true",
+				"daaukins":     "frontend",
+				"daaukins.lab": options.LabID,
 			},
 			Memory: 2 * 1024 * 1024 * 1024, // 2 GB
 			Tty:    true,
