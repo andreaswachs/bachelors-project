@@ -98,8 +98,10 @@ func GetById(id string) (*lab, error) {
 func GetAll() []*lab {
 	labsBuffer := make([]*lab, 0)
 
-	for _, lab := range labs {
-		labsBuffer = append(labsBuffer, lab)
+	for id, aLab := range labs {
+		if id == aLab.id {
+			labsBuffer = append(labsBuffer, aLab)
+		}
 	}
 
 	return labsBuffer
@@ -493,7 +495,7 @@ func (l *lab) Remove() error {
 
 	log.Info().Msgf("Lab %s removed", l.name)
 
-	delete(labs, l.name)
+	delete(labs, l.id)
 
 	return nil
 }

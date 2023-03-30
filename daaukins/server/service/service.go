@@ -257,8 +257,8 @@ func (s *Server) GetLab(context context.Context, request *service.GetLabRequest)
 		responseLock := sync.Mutex{}
 
 		// Check if we have the lab
-		lab, err := labs.GetById(request.Id)
-		if err == nil {
+		lab, _ := labs.GetById(request.Id)
+		if lab != nil {
 			return &service.GetLabResponse{
 				Lab: &service.LabDescription{
 					Id:            lab.GetId(),
@@ -280,6 +280,11 @@ func (s *Server) GetLab(context context.Context, request *service.GetLabRequest)
 				})
 				if err != nil {
 					log.Error().Err(err).Msgf("Failed to get lab from minion %s:%d", m.config.Address, m.config.Port)
+				}
+
+				if response == nil {
+					log.Error().Msg("Get lab response from follower was nil!")
+					return
 				}
 
 				if response.Lab != nil {
@@ -400,7 +405,6 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 				}
 
 				return &service.RemoveLabResponse{}, nil
-
 			}
 		}
 
@@ -413,6 +417,11 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 				})
 				if err != nil {
 					log.Error().Err(err).Msgf("Failed to get lab from minion %s:%d", m.config.Address, m.config.Port)
+				}
+
+				if response == nil {
+					log.Error().Msg("Get lab response from follower was nil!")
+					return
 				}
 
 				if response.Lab != nil {
