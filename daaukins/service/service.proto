@@ -13,6 +13,8 @@ service service {
     rpc GetLabs(GetLabsRequest) returns (GetLabsResponse) {}
     rpc RemoveLab(RemoveLabRequest) returns (RemoveLabResponse) {}
     rpc GetServerMode(GetServerModeRequest) returns (GetServerModeResponse) {}
+    rpc GetFrontends(GetFrontendsRequest) returns (GetFrontendsResponse) {}
+    rpc GetServers(google.protobuf.Empty) returns (GetServersResponse) {}
 }
 
 // HaveCapacityRequest contains the string lab
@@ -43,6 +45,7 @@ message ScheduleLabRequest {
 message ScheduleLabResponse {
     bool scheduled = 1;
     string id = 2;
+    Frontend frontend = 3;
 }
 
 // GetLabRequest contains the string id
@@ -62,11 +65,12 @@ message LabDescription {
     int32 num_challenges = 3;
     int32 num_users = 4;
     string server_id = 5;
+    Frontend frontend = 6;
 }
 
 // GetLabsRequest
 message GetLabsRequest {
-    google.protobuf.Empty empty = 1;
+    string server_id = 1;
 }
 
 // GetLabsResponse
@@ -76,6 +80,7 @@ message GetLabsResponse {
 
 message RemoveLabRequest {
     string id = 1;
+    string server_id = 2;
 }
 
 message RemoveLabResponse {
@@ -88,4 +93,30 @@ message GetServerModeRequest {
 
 message GetServerModeResponse {
     string mode = 1;
+}
+
+message Frontend {
+    string port = 1;
+    string host = 2;
+    string server_id = 3;
+}
+
+message GetFrontendsRequest {
+    string server_id = 1;
+}
+
+message GetFrontendsResponse {
+    repeated Frontend frontends = 1;
+}
+
+message Server {
+    string id = 1;
+    string name = 2;
+    string mode = 3;
+    int32 num_labs = 5;
+    bool connected = 6;
+}
+
+message GetServersResponse {
+    repeated Server servers = 1;
 }

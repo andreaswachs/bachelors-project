@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.21.12
-// source: service/service.proto
+// source: service.proto
 
 package service
 
@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -28,6 +29,8 @@ type ServiceClient interface {
 	GetLabs(ctx context.Context, in *GetLabsRequest, opts ...grpc.CallOption) (*GetLabsResponse, error)
 	RemoveLab(ctx context.Context, in *RemoveLabRequest, opts ...grpc.CallOption) (*RemoveLabResponse, error)
 	GetServerMode(ctx context.Context, in *GetServerModeRequest, opts ...grpc.CallOption) (*GetServerModeResponse, error)
+	GetFrontends(ctx context.Context, in *GetFrontendsRequest, opts ...grpc.CallOption) (*GetFrontendsResponse, error)
+	GetServers(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetServersResponse, error)
 }
 
 type serviceClient struct {
@@ -92,6 +95,24 @@ func (c *serviceClient) GetServerMode(ctx context.Context, in *GetServerModeRequ
 	return out, nil
 }
 
+func (c *serviceClient) GetFrontends(ctx context.Context, in *GetFrontendsRequest, opts ...grpc.CallOption) (*GetFrontendsResponse, error) {
+	out := new(GetFrontendsResponse)
+	err := c.cc.Invoke(ctx, "/service.service/GetFrontends", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *serviceClient) GetServers(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetServersResponse, error) {
+	out := new(GetServersResponse)
+	err := c.cc.Invoke(ctx, "/service.service/GetServers", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ServiceServer is the server API for Service service.
 // All implementations must embed UnimplementedServiceServer
 // for forward compatibility
@@ -102,6 +123,8 @@ type ServiceServer interface {
 	GetLabs(context.Context, *GetLabsRequest) (*GetLabsResponse, error)
 	RemoveLab(context.Context, *RemoveLabRequest) (*RemoveLabResponse, error)
 	GetServerMode(context.Context, *GetServerModeRequest) (*GetServerModeResponse, error)
+	GetFrontends(context.Context, *GetFrontendsRequest) (*GetFrontendsResponse, error)
+	GetServers(context.Context, *emptypb.Empty) (*GetServersResponse, error)
 	mustEmbedUnimplementedServiceServer()
 }
 
@@ -126,6 +149,12 @@ func (UnimplementedServiceServer) RemoveLab(context.Context, *RemoveLabRequest) 
 }
 func (UnimplementedServiceServer) GetServerMode(context.Context, *GetServerModeRequest) (*GetServerModeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetServerMode not implemented")
+}
+func (UnimplementedServiceServer) GetFrontends(context.Context, *GetFrontendsRequest) (*GetFrontendsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFrontends not implemented")
+}
+func (UnimplementedServiceServer) GetServers(context.Context, *emptypb.Empty) (*GetServersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetServers not implemented")
 }
 func (UnimplementedServiceServer) mustEmbedUnimplementedServiceServer() {}
 
@@ -248,6 +277,42 @@ func _Service_GetServerMode_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Service_GetFrontends_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFrontendsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServiceServer).GetFrontends(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/service.service/GetFrontends",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServiceServer).GetFrontends(ctx, req.(*GetFrontendsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Service_GetServers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServiceServer).GetServers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/service.service/GetServers",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServiceServer).GetServers(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Service_ServiceDesc is the grpc.ServiceDesc for Service service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -279,7 +344,15 @@ var Service_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetServerMode",
 			Handler:    _Service_GetServerMode_Handler,
 		},
+		{
+			MethodName: "GetFrontends",
+			Handler:    _Service_GetFrontends_Handler,
+		},
+		{
+			MethodName: "GetServers",
+			Handler:    _Service_GetServers_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "service/service.proto",
+	Metadata: "service.proto",
 }
