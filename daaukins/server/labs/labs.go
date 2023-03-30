@@ -141,9 +141,7 @@ func HasCapacity(path string) (bool, error) {
 		return false, err
 	}
 
-	// Temporary ensure no labs are provisioned if the server is in leader mode
-	return !(config.GetServerMode().String() == config.ModeLeader.String()) &&
-		availableMemory >= totalMemoryRequired, nil
+	return availableMemory >= totalMemoryRequired, nil
 }
 
 func GetCapacity() (int, error) {
