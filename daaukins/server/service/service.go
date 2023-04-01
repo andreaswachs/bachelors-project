@@ -12,6 +12,9 @@ import (
 	service "github.com/andreaswachs/daaukins-service"
 	"github.com/rs/zerolog/log"
 	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 var (
@@ -22,8 +25,9 @@ var (
 )
 
 type minion struct {
-	client service.ServiceClient
-	config config.MinionConfig
+	client   service.ServiceClient
+	config   config.MinionConfig
+	serverId string
 }
 
 type askHasCapacityResponse struct {
@@ -465,4 +469,66 @@ func (s *Server) GetServerMode(context context.Context, request *service.GetServ
 		Mode:     config.GetServerMode().String(),
 		ServerId: config.GetServerID(),
 	}, nil
+}
+
+func (s *Server) GetServers(ctx context.Context, _ *emptypb.Empty) (*service.GetServersResponse, error) {
+	if config.GetServerMode() == config.ModeLeader {
+		servers := make([]*service.Server, 0)
+		serversSliceLock := sync.Mutex{}
+		numLabsWg := sync.WaitGroup{}
+
+		// Add ourselves
+		servers = append(servers, &service.Server{
+			Id:        config.GetServerID(),
+			Mode:      config.GetServerMode().String(),
+			Name:      "Leader",
+			NumLabs:   int32(len(labs.GetAll())),
+			Connected: true,
+		})
+
+		handler := func(f *minion, isConnected bool) {
+			defer numLabsWg.Done()
+			response, err := f.client.GetLabs(context.Background(), &service.GetLabsRequest{})
+			if err != nil {
+				log.Error().Err(err).Msgf("Failed to get number of labs from follower %s:%d", f.config.Address, f.config.Port)
+				return
+			}
+
+			if response == nil || response.GetLabs() == nil {
+				log.Error().Msg("Get labs response from follower was nil!")
+				return
+			}
+
+			serversSliceLock.Lock()
+			defer serversSliceLock.Unlock()
+
+			servers = append(servers, &service.Server{
+				Id:        f.serverId,
+				Mode:      "follower",
+				Name:      f.config.Name,
+				NumLabs:   int32(len(response.GetLabs())),
+				Connected: isConnected,
+			})
+		}
+
+		// Add connected
+		for _, follower := range connectedMinions {
+			numLabsWg.Add(1)
+			go handler(follower, true)
+		}
+
+		for _, follower := range disconnectedMinions {
+			numLabsWg.Add(1)
+			go handler(follower, false)
+		}
+
+		numLabsWg.Wait()
+
+		return &service.GetServersResponse{
+			Servers: servers,
+		}, nil
+	}
+
+	return &service.GetServersResponse{}, status.Errorf(codes.FailedPrecondition, `this servers is a follower, not a leader.
+Therefore, it does not know about other servers.`)
 }
