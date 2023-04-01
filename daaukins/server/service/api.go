@@ -1,5 +1,3 @@
-// api.go contains an implementation of the gRPC service defined in service/service.proto.
-
 package service
 
 import (
@@ -8,7 +6,7 @@ import (
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs"
-	"github.com/andreaswachs/bachelors-project/daaukins/service"
+	service "github.com/andreaswachs/daaukins-service"
 	"github.com/rs/zerolog/log"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

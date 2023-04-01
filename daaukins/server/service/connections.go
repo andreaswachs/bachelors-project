@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
-	"github.com/andreaswachs/bachelors-project/daaukins/service"
+	service "github.com/andreaswachs/daaukins-service"
 	"github.com/rs/zerolog/log"
 	grpc "google.golang.org/grpc"
 )

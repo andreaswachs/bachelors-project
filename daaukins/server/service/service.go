@@ -9,7 +9,7 @@ import (
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs"
-	"github.com/andreaswachs/bachelors-project/daaukins/service"
+	service "github.com/andreaswachs/daaukins-service"
 	"github.com/rs/zerolog/log"
 	grpc "google.golang.org/grpc"
 )
@@ -462,6 +462,7 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 
 func (s *Server) GetServerMode(context context.Context, request *service.GetServerModeRequest) (*service.GetServerModeResponse, error) {
 	return &service.GetServerModeResponse{
-		Mode: config.GetServerMode().String(),
+		Mode:     config.GetServerMode().String(),
+		ServerId: config.GetServerID(),
 	}, nil
 }

@@ -3,11 +3,12 @@ module github.com/andreaswachs/bachelors-project/daaukins/server
 go 1.20
 
 require (
-	github.com/andreaswachs/bachelors-project/daaukins/service v0.0.0-20230330134228-3f32df27bd37
+	github.com/andreaswachs/daaukins-service v0.1.0
 	github.com/fsouza/go-dockerclient v1.9.7
 	github.com/google/uuid v1.3.0
 	github.com/rs/zerolog v1.29.0
 	google.golang.org/grpc v1.54.0
+	google.golang.org/protobuf v1.30.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -37,7 +38,6 @@ require (
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/tools v0.7.0 // indirect
-	google.golang.org/genproto v0.0.0-20230327215041-6ac7f18bb9d5 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
+	google.golang.org/genproto v0.0.0-20230331144136-dcfb400f0633 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
 )
