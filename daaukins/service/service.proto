@@ -93,6 +93,7 @@ message GetServerModeRequest {
 
 message GetServerModeResponse {
     string mode = 1;
+    string server_id = 2;
 }
 
 message Frontend {
