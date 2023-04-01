@@ -11,7 +11,7 @@ import (
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs"
-	service "github.com/andreaswachs/daaukins-service"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/service"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
