@@ -12,7 +12,6 @@ import (
 	service "github.com/andreaswachs/daaukins-service"
 	"github.com/rs/zerolog/log"
 	grpc "google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 var (
@@ -466,14 +465,4 @@ func (s *Server) GetServerMode(context context.Context, request *service.GetServ
 		Mode:     config.GetServerMode().String(),
 		ServerId: config.GetServerID(),
 	}, nil
-}
-
-func (s *Server) GetServers(context context.Context, _ *emptypb.Empty) (*service.GetServersResponse, error) {
-	followers := config.GetMinions()
-	servers := make([]*service.Server, 0)
-
-	for _, follower := range followers {
-		servers = append(servers, &service.Server{})
-	}
-
 }
