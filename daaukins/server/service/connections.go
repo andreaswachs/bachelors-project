@@ -53,6 +53,8 @@ func ConnectMinions() ([]*minion, []*minion) {
 				return
 			}
 
+			minionBuffer.serverId = response.ServerId
+
 			connectedMinionBufferLock.Lock()
 			defer connectedMinionBufferLock.Unlock()
 
