@@ -4,10 +4,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/Microsoft/go-winio v0.6.0 h1:slsWYD/zyx7lCXoZVlvQrj0hPTM1HI4+v1sIda2yDvg=
 github.com/Microsoft/go-winio v0.6.0/go.mod h1:cTAf44im0RAYeL23bpB+fzCyDH2MJiz2BO69KH/soAE=
 github.com/Microsoft/hcsshim v0.10.0-rc.7 h1:HBytQPxcv8Oy4244zbQbe6hnOnx544eL5QPUqhJldz8=
-github.com/andreaswachs/bachelors-project/daaukins/service v0.0.0-20230330133259-b5eafe9e7882 h1:uxOiKSgPwT8ctx8QnQJm/M4COjwi5lziUDgdX50MMcI=
-github.com/andreaswachs/bachelors-project/daaukins/service v0.0.0-20230330133259-b5eafe9e7882/go.mod h1:sQ3Y14je+W0BERjezXntFhkLnYe8ZPdELmlLBUAxLQI=
-github.com/andreaswachs/bachelors-project/daaukins/service v0.0.0-20230330134228-3f32df27bd37 h1:pXaIBlj3NuduQZ+2InEuX+UCyXjZMhnAS2Xi+V+NSpo=
-github.com/andreaswachs/bachelors-project/daaukins/service v0.0.0-20230330134228-3f32df27bd37/go.mod h1:sQ3Y14je+W0BERjezXntFhkLnYe8ZPdELmlLBUAxLQI=
+github.com/andreaswachs/daaukins-service v0.1.0 h1:j44/dh+d90CKuJK5nPfCpED8uQSVTmKY/n3th85iIhk=
+github.com/andreaswachs/daaukins-service v0.1.0/go.mod h1:/pQLycFO2XFcQQ18uEKECfPr9SN4K8FtKsJp111NWgY=
 github.com/checkpoint-restore/go-criu/v5 v5.3.0/go.mod h1:E/eQpaFtUKGOOSEBZgmKAcn+zUUwWxqcaKZlF54wK8E=
 github.com/cilium/ebpf v0.7.0/go.mod h1:/oI2+1shJiTGAMgl6/RgJr36Eo1jzrRcAWbcXO2usCA=
 github.com/containerd/console v1.0.3/go.mod h1:7LqA/THxQ86k76b8c/EMSiaJ3h1eZkMkXar0TQ1gf3U=
@@ -153,8 +151,8 @@ golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8T
 golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
-google.golang.org/genproto v0.0.0-20230327215041-6ac7f18bb9d5 h1:Kd6tRRHXw8z4TlPlWi+NaK10gsePL6GdZBQChptOLGA=
-google.golang.org/genproto v0.0.0-20230327215041-6ac7f18bb9d5/go.mod h1:UUQDJDOlWu4KYeJZffbWgBkS1YFobzKbLVfK69pe0Ak=
+google.golang.org/genproto v0.0.0-20230331144136-dcfb400f0633 h1:0BOZf6qNozI3pkN3fJLwNubheHJYHhMh91GRFOWWK08=
+google.golang.org/genproto v0.0.0-20230331144136-dcfb400f0633/go.mod h1:UUQDJDOlWu4KYeJZffbWgBkS1YFobzKbLVfK69pe0Ak=
 google.golang.org/grpc v1.54.0 h1:EhTqbhiYeixwWQtAEZAxmV9MGqcjEU2mFx52xCzNyag=
 google.golang.org/grpc v1.54.0/go.mod h1:PUSEXI6iWghWaB6lXM4knEgpJNu2qUcKfDtNci3EC2g=
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
