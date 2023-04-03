@@ -23,7 +23,10 @@ var (
 	emptyRemoveLabResponse    = &service.RemoveLabResponse{}
 )
 
-func HaveCapacity(context context.Context, request *service.HaveCapacityRequest) (*service.HaveCapacityResponse, error) {
+func HaveCapacity(
+	context context.Context,
+	request *service.HaveCapacityRequest,
+) (*service.HaveCapacityResponse, error) {
 	if request.Lab == "" {
 		return emptyHaveCapacityResponse, status.Errorf(codes.InvalidArgument, "lab is empty")
 	}
@@ -35,12 +38,20 @@ func HaveCapacity(context context.Context, request *service.HaveCapacityRequest)
 
 	hasCapacity, err := labs.HasCapacity(tempFile.Name())
 	if err != nil {
-		return emptyHaveCapacityResponse, status.Errorf(codes.Internal, "failed to check if lab has capacity: %v", err)
+		return emptyHaveCapacityResponse, status.Errorf(
+			codes.Internal,
+			"failed to check if lab has capacity: %v",
+			err,
+		)
 	}
 
 	capacity, err := labs.GetCapacity()
 	if err != nil {
-		return emptyHaveCapacityResponse, status.Errorf(codes.Internal, "failed to get capacity: %v", err)
+		return emptyHaveCapacityResponse, status.Errorf(
+			codes.Internal,
+			"failed to get capacity: %v",
+			err,
+		)
 	}
 
 	response := &service.HaveCapacityResponse{
@@ -51,7 +62,10 @@ func HaveCapacity(context context.Context, request *service.HaveCapacityRequest)
 	return response, nil
 }
 
-func ScheduleLab(context context.Context, request *service.ScheduleLabRequest) (*service.ScheduleLabResponse, error) {
+func ScheduleLab(
+	context context.Context,
+	request *service.ScheduleLabRequest,
+) (*service.ScheduleLabResponse, error) {
 	if request.Lab == "" {
 		return emptyScheduleLabResponse, status.Errorf(codes.InvalidArgument, "lab is empty")
 	}
@@ -63,18 +77,28 @@ func ScheduleLab(context context.Context, request *service.ScheduleLabRequest) (
 
 	lab, err := labs.Provision(tempFile.Name())
 	if err != nil {
-		return emptyScheduleLabResponse, status.Errorf(codes.Internal, "failed to provision lab: %v", err)
+		return emptyScheduleLabResponse, status.Errorf(
+			codes.Internal,
+			"failed to provision lab: %v",
+			err,
+		)
 	}
 
 	if err = lab.Start(); err != nil {
-		return emptyScheduleLabResponse, status.Errorf(codes.Internal, "failed to start lab: %v", err)
+		return emptyScheduleLabResponse, status.Errorf(
+			codes.Internal,
+			"failed to start lab: %v",
+			err,
+		)
 	}
 
 	return &service.ScheduleLabResponse{Id: lab.GetId()}, nil
-
 }
 
-func GetLab(context context.Context, request *service.GetLabRequest) (*service.GetLabResponse, error) {
+func GetLab(
+	context context.Context,
+	request *service.GetLabRequest,
+) (*service.GetLabResponse, error) {
 	if request.Id == "" {
 		return emptyGetLabResponse, status.Errorf(codes.InvalidArgument, "id is empty")
 	}
@@ -101,10 +125,22 @@ func GetLab(context context.Context, request *service.GetLabRequest) (*service.G
 	return response, nil
 }
 
-func GetLabs(context context.Context, _request *service.GetLabsRequest) (*service.GetLabsResponse, error) {
+func GetLabs(
+	context context.Context,
+	request *service.GetLabsRequest,
+) (*service.GetLabsResponse, error) {
+	if request.GetServerId() != "" || request.GetServerId() != config.GetServerID() {
+		return emptyGetLabsResponse, status.Errorf(
+			codes.InvalidArgument,
+			"this server was not qualified to return labs",
+		)
+	}
 	labs := labs.GetAll()
 
-	log.Debug().Int("numLabs", len(labs)).Msg("GetLabs")
+	log.Debug().
+		Int("numLabs", len(labs)).
+		Str("requestedServerID", request.GetServerId()).
+		Msg("GetLabs()")
 
 	labsResponse := make([]*service.LabDescription, len(labs))
 	for i, lab := range labs {
@@ -124,7 +160,10 @@ func GetLabs(context context.Context, _request *service.GetLabsRequest) (*servic
 	return response, nil
 }
 
-func RemoveLab(context context.Context, request *service.RemoveLabRequest) (*service.RemoveLabResponse, error) {
+func RemoveLab(
+	context context.Context,
+	request *service.RemoveLabRequest,
+) (*service.RemoveLabResponse, error) {
 	if request.Id == "" {
 		return emptyRemoveLabResponse, status.Errorf(codes.InvalidArgument, "id is empty")
 	}
@@ -147,11 +186,17 @@ func RemoveLab(context context.Context, request *service.RemoveLabRequest) (*ser
 	}, nil
 }
 
-func GetFrontends(ctx context.Context, request *service.GetFrontendsRequest) (*service.GetFrontendsResponse, error) {
+func GetFrontends(
+	ctx context.Context,
+	request *service.GetFrontendsRequest,
+) (*service.GetFrontendsResponse, error) {
 	// If the IDs dont match or if the request's server ID is not empty, then return an error
 	// The empty server ID means that we want frontends from all servers
 	if config.GetServerID() != request.GetServerId() || request.GetServerId() != "" {
-		return emptyGetFrontendsResponse, status.Errorf(codes.InvalidArgument, "server id does not match")
+		return emptyGetFrontendsResponse, status.Errorf(
+			codes.InvalidArgument,
+			"server id does not match",
+		)
 	}
 
 	frontends := make([]*service.Frontend, 0)

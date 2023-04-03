@@ -69,7 +69,10 @@ func Stop() {
 	server.GracefulStop()
 }
 
-func (s *Server) HaveCapacity(context context.Context, request *service.HaveCapacityRequest) (*service.HaveCapacityResponse, error) {
+func (s *Server) HaveCapacity(
+	context context.Context,
+	request *service.HaveCapacityRequest,
+) (*service.HaveCapacityResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		// If we're the leader, then we will query all minions and return true if a single minion has capacity
 
@@ -160,7 +163,11 @@ func (s *Server) HaveCapacity(context context.Context, request *service.HaveCapa
 	log.Debug().Msg("Checking if we have capacity")
 	return HaveCapacity(context, request)
 }
-func (s *Server) ScheduleLab(context context.Context, request *service.ScheduleLabRequest) (*service.ScheduleLabResponse, error) {
+
+func (s *Server) ScheduleLab(
+	context context.Context,
+	request *service.ScheduleLabRequest,
+) (*service.ScheduleLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		// Ask all minions what their capacity is and compare them including our own capacity.
 		// Schedule the lab on the minion with the most capacity (this instance included)
@@ -204,7 +211,9 @@ func (s *Server) ScheduleLab(context context.Context, request *service.ScheduleL
 					Lab: request.Lab,
 				})
 				if err != nil {
-					log.Error().Err(err).Msgf("Failed to get capacity from follower %s:%d", m.config.Address, m.config.Port)
+					log.Error().
+						Err(err).
+						Msgf("Failed to get capacity from follower %s:%d", m.config.Address, m.config.Port)
 				}
 
 				if response.HasCapacity {
@@ -243,14 +252,19 @@ func (s *Server) ScheduleLab(context context.Context, request *service.ScheduleL
 			return ScheduleLab(context, request)
 		}
 
-		log.Info().Msgf("Scheduling lab on follower %s:%d", bestMinion.minion.config.Address, bestMinion.minion.config.Port)
+		log.Info().
+			Msgf("Scheduling lab on follower %s:%d", bestMinion.minion.config.Address, bestMinion.minion.config.Port)
 		return bestMinion.minion.client.ScheduleLab(context, request)
 	}
 
 	// In this case, this server instance is a minion and we'll just schedule the lab on ourself
 	return ScheduleLab(context, request)
 }
-func (s *Server) GetLab(context context.Context, request *service.GetLabRequest) (*service.GetLabResponse, error) {
+
+func (s *Server) GetLab(
+	context context.Context,
+	request *service.GetLabRequest,
+) (*service.GetLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		wg := sync.WaitGroup{}
 		responses := make([]*askGetLabResponse, 0)
@@ -279,7 +293,9 @@ func (s *Server) GetLab(context context.Context, request *service.GetLabRequest)
 					Id: request.Id,
 				})
 				if err != nil {
-					log.Error().Err(err).Msgf("Failed to get lab from follower %s:%d", m.config.Address, m.config.Port)
+					log.Error().
+						Err(err).
+						Msgf("Failed to get lab from follower %s:%d", m.config.Address, m.config.Port)
 				}
 
 				if response == nil {
@@ -323,22 +339,28 @@ func (s *Server) GetLab(context context.Context, request *service.GetLabRequest)
 
 	return GetLab(context, request)
 }
-func (s *Server) GetLabs(context context.Context, request *service.GetLabsRequest) (*service.GetLabsResponse, error) {
+
+func (s *Server) GetLabs(
+	context context.Context,
+	request *service.GetLabsRequest,
+) (*service.GetLabsResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		wg := sync.WaitGroup{}
 		responses := make([]*service.GetLabsResponse, 0)
 		responseLock := sync.Mutex{}
 
 		// Get labs from ourselves
-		localLabs, err := GetLabs(context, request)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to get labs from self")
-		}
+		if request.GetServerId() == "" || request.GetServerId() == config.GetServerID() {
+			localLabs, err := GetLabs(context, request)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to get labs from self")
+			}
 
-		log.Debug().Int("labs", len(localLabs.Labs)).Msg("Got labs from self")
+			log.Debug().Int("labs", len(localLabs.Labs)).Msg("Got labs from self")
 
-		if localLabs.Labs != nil && len(localLabs.Labs) > 0 {
-			responses = append(responses, localLabs)
+			if localLabs.Labs != nil && len(localLabs.Labs) > 0 {
+				responses = append(responses, localLabs)
+			}
 		}
 
 		for _, connMinion := range connectedMinions {
@@ -347,18 +369,30 @@ func (s *Server) GetLabs(context context.Context, request *service.GetLabsReques
 				defer wg.Done()
 				response, err := m.client.GetLabs(context, &service.GetLabsRequest{})
 				if err != nil {
-					log.Error().Err(err).Msgf("Failed to get labs from follower %s:%d", m.config.Address, m.config.Port)
+					log.Error().
+						Err(err).
+						Msgf("Failed to get labs from follower %s:%d", m.config.Address, m.config.Port)
 				}
 
-				if len(response.Labs) > 0 {
-					responseLock.Lock()
-					defer responseLock.Unlock()
+				// If there are responses, and the requested server ID is either empty (accept all servers)
+				// Or the serverID matches the labs returned from the given follower; then add them to the result
+				if len(response.Labs) > 0 && (request.GetServerId() == "" ||
+					request.GetServerId() == response.Labs[0].GetServerId()) {
 
+					log.Debug().
+						Int("labs", len(response.Labs)).
+						Str("address", m.config.Address).
+						Msg("Got labs from follower")
+
+					responseLock.Lock()
 					responses = append(responses, response)
+					responseLock.Unlock()
 				}
 
 				log.Debug().
-					Msgf("Got labs from follower %s:%d", m.config.Address, m.config.Port)
+					Str("address", m.config.Address).
+					Int("port", m.config.Port).
+					Msg("Got labs from follower")
 			}(connMinion)
 		}
 		wg.Wait()
@@ -383,7 +417,11 @@ func (s *Server) GetLabs(context context.Context, request *service.GetLabsReques
 
 	return GetLabs(context, request)
 }
-func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRequest) (*service.RemoveLabResponse, error) {
+
+func (s *Server) RemoveLab(
+	context context.Context,
+	request *service.RemoveLabRequest,
+) (*service.RemoveLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		// Ask all minions for the given lab
 		// If we find it, remove it
@@ -416,7 +454,9 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 					Id: request.Id,
 				})
 				if err != nil {
-					log.Error().Err(err).Msgf("Failed to get lab from follower %s:%d", m.config.Address, m.config.Port)
+					log.Error().
+						Err(err).
+						Msgf("Failed to get lab from follower %s:%d", m.config.Address, m.config.Port)
 				}
 
 				if response == nil {
@@ -450,7 +490,9 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 			Id: request.Id,
 		})
 		if err != nil {
-			log.Error().Err(err).Msgf("Failed to remove lab from follower %s:%d", theMinion.config.Address, theMinion.config.Port)
+			log.Error().
+				Err(err).
+				Msgf("Failed to remove lab from follower %s:%d", theMinion.config.Address, theMinion.config.Port)
 			return nil, err
 		}
 
@@ -460,14 +502,20 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 	return RemoveLab(context, request)
 }
 
-func (s *Server) GetServerMode(context context.Context, request *service.GetServerModeRequest) (*service.GetServerModeResponse, error) {
+func (s *Server) GetServerMode(
+	context context.Context,
+	request *service.GetServerModeRequest,
+) (*service.GetServerModeResponse, error) {
 	return &service.GetServerModeResponse{
 		Mode:     config.GetServerMode().String(),
 		ServerId: config.GetServerID(),
 	}, nil
 }
 
-func (s *Server) GetFrontends(ctx context.Context, request *service.GetFrontendsRequest) (*service.GetFrontendsResponse, error) {
+func (s *Server) GetFrontends(
+	ctx context.Context,
+	request *service.GetFrontendsRequest,
+) (*service.GetFrontendsResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		// Check to see if the server ID is matching to the leader server
 		if request.ServerId == config.GetServerID() {
