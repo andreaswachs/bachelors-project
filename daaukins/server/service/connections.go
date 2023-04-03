@@ -36,7 +36,7 @@ func ConnectMinions() ([]*minion, []*minion) {
 				defer disconnectedMinionBufferLock.Unlock()
 
 				disconnectedMinionBuffer = append(disconnectedMinionBuffer, minionBuffer)
-				log.Error().Err(err).Msgf("Failed to connect to minion %s:%d", m.Address, m.Port)
+				log.Error().Err(err).Msgf("Failed to connect to follower %s:%d", m.Address, m.Port)
 				return
 			}
 

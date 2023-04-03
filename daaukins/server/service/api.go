@@ -1,7 +1,9 @@
+// api.go implements the Daaukins service gRPC API for the local server instance.
 package service
 
 import (
 	context "context"
+	"fmt"
 	"os"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
@@ -12,24 +14,33 @@ import (
 	status "google.golang.org/grpc/status"
 )
 
+var (
+	emptyGetFrontendsResponse = &service.GetFrontendsResponse{}
+	emptyHaveCapacityResponse = &service.HaveCapacityResponse{}
+	emptyScheduleLabResponse  = &service.ScheduleLabResponse{}
+	emptyGetLabResponse       = &service.GetLabResponse{}
+	emptyGetLabsResponse      = &service.GetLabsResponse{}
+	emptyRemoveLabResponse    = &service.RemoveLabResponse{}
+)
+
 func HaveCapacity(context context.Context, request *service.HaveCapacityRequest) (*service.HaveCapacityResponse, error) {
 	if request.Lab == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "lab is empty")
+		return emptyHaveCapacityResponse, status.Errorf(codes.InvalidArgument, "lab is empty")
 	}
 
 	tempFile, err := saveLabFile(request.Lab)
 	if err != nil {
-		return nil, err
+		return emptyHaveCapacityResponse, err
 	}
 
 	hasCapacity, err := labs.HasCapacity(tempFile.Name())
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to check if lab has capacity: %v", err)
+		return emptyHaveCapacityResponse, status.Errorf(codes.Internal, "failed to check if lab has capacity: %v", err)
 	}
 
 	capacity, err := labs.GetCapacity()
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get capacity: %v", err)
+		return emptyHaveCapacityResponse, status.Errorf(codes.Internal, "failed to get capacity: %v", err)
 	}
 
 	response := &service.HaveCapacityResponse{
@@ -42,21 +53,21 @@ func HaveCapacity(context context.Context, request *service.HaveCapacityRequest)
 
 func ScheduleLab(context context.Context, request *service.ScheduleLabRequest) (*service.ScheduleLabResponse, error) {
 	if request.Lab == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "lab is empty")
+		return emptyScheduleLabResponse, status.Errorf(codes.InvalidArgument, "lab is empty")
 	}
 
 	tempFile, err := saveLabFile(request.Lab)
 	if err != nil {
-		return nil, err
+		return emptyScheduleLabResponse, err
 	}
 
 	lab, err := labs.Provision(tempFile.Name())
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to provision lab: %v", err)
+		return emptyScheduleLabResponse, status.Errorf(codes.Internal, "failed to provision lab: %v", err)
 	}
 
 	if err = lab.Start(); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to start lab: %v", err)
+		return emptyScheduleLabResponse, status.Errorf(codes.Internal, "failed to start lab: %v", err)
 	}
 
 	return &service.ScheduleLabResponse{Id: lab.GetId()}, nil
@@ -65,16 +76,16 @@ func ScheduleLab(context context.Context, request *service.ScheduleLabRequest) (
 
 func GetLab(context context.Context, request *service.GetLabRequest) (*service.GetLabResponse, error) {
 	if request.Id == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "id is empty")
+		return emptyGetLabResponse, status.Errorf(codes.InvalidArgument, "id is empty")
 	}
 
 	lab, err := labs.GetById(request.Id)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get lab: %v", err)
+		return emptyGetLabResponse, status.Errorf(codes.Internal, "failed to get lab: %v", err)
 	}
 
 	if lab == nil {
-		return nil, status.Errorf(codes.NotFound, "lab not found")
+		return emptyGetLabResponse, status.Errorf(codes.NotFound, "lab not found")
 	}
 
 	response := &service.GetLabResponse{
@@ -115,24 +126,53 @@ func GetLabs(context context.Context, _request *service.GetLabsRequest) (*servic
 
 func RemoveLab(context context.Context, request *service.RemoveLabRequest) (*service.RemoveLabResponse, error) {
 	if request.Id == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "id is empty")
+		return emptyRemoveLabResponse, status.Errorf(codes.InvalidArgument, "id is empty")
 	}
 
 	lab, err := labs.GetById(request.Id)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get lab: %v", err)
+		return emptyRemoveLabResponse, status.Errorf(codes.Internal, "failed to get lab: %v", err)
 	}
 
 	if lab == nil {
-		return nil, status.Errorf(codes.NotFound, "lab not found")
+		return emptyRemoveLabResponse, status.Errorf(codes.NotFound, "lab not found")
 	}
 
 	if err := lab.Remove(); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to stop lab: %v", err)
+		return emptyRemoveLabResponse, status.Errorf(codes.Internal, "failed to stop lab: %v", err)
 	}
 
 	return &service.RemoveLabResponse{
 		Ok: true,
+	}, nil
+}
+
+func GetFrontends(ctx context.Context, request *service.GetFrontendsRequest) (*service.GetFrontendsResponse, error) {
+	// If the IDs dont match or if the request's server ID is not empty, then return an error
+	// The empty server ID means that we want frontends from all servers
+	if config.GetServerID() != request.GetServerId() || request.GetServerId() != "" {
+		return emptyGetFrontendsResponse, status.Errorf(codes.InvalidArgument, "server id does not match")
+	}
+
+	frontends := make([]*service.Frontend, 0)
+	allLabs := labs.GetAll()
+	for _, lab := range allLabs {
+		fe := lab.GetFrontend()
+
+		if fe == nil {
+			continue
+		}
+
+		frontends = append(frontends, &service.Frontend{
+			Host:     "todo",
+			Port:     fmt.Sprint(fe.GetProxyPort()),
+			ServerId: config.GetServerID(),
+		})
+
+	}
+
+	return &service.GetFrontendsResponse{
+		Frontends: frontends,
 	}, nil
 }
 
