@@ -512,6 +512,10 @@ func (l *lab) GetChallenges() []*challenge.Challenge {
 	return l.challenges
 }
 
+func (l *lab) GetFrontend() frontend.T {
+	return l.frontend
+}
+
 func load(path string) (labDTO, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
