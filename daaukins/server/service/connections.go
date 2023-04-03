@@ -45,7 +45,7 @@ func ConnectMinions() ([]*minion, []*minion) {
 
 			response, err := serviceClient.GetServerMode(context.Background(), &service.GetServerModeRequest{})
 			if err != nil {
-				log.Error().Err(err).Msgf("Failed to get server mode from minion %s:%d", m.Address, m.Port)
+				log.Error().Err(err).Msgf("Failed to get server mode from follower %s:%d", m.Address, m.Port)
 			}
 
 			if response.Mode == config.ModeLeader.String() {
@@ -57,7 +57,7 @@ func ConnectMinions() ([]*minion, []*minion) {
 			defer connectedMinionBufferLock.Unlock()
 
 			connectedMinionBuffer = append(connectedMinionBuffer, minionBuffer)
-			log.Info().Msgf("Connected to minion %s:%d", m.Address, m.Port)
+			log.Info().Msgf("Connected to follower %s:%d", m.Address, m.Port)
 		}(&minionConfig)
 	}
 

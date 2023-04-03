@@ -18,9 +18,7 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-var (
-	configFilename = flag.String("config", "server.yaml", "path to config file")
-)
+var configFilename = flag.String("config", "server.yaml", "path to config file")
 
 func main() {
 	flag.Parse()
@@ -37,19 +35,26 @@ func main() {
 	<-stop
 	log.Info().Msg("shutting down server")
 	if err := labs.RemoveAll(); err != nil {
-		log.Error().Err(err).Msg("failed to remove all labs. Run `make clean-docker` to cleanup manually")
+		log.Error().
+			Err(err).
+			Msg("failed to remove all labs. Run `make clean-docker` to cleanup manually")
 	}
 
 	service.Stop()
 }
 
 // Credit: https://github.com/islishude/grpc-mtls-example
-func middlefunc(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+func middlefunc(
+	ctx context.Context,
+	req interface{},
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (resp interface{}, err error) {
 	// get client tls info
 	if p, ok := peer.FromContext(ctx); ok {
 		if mtls, ok := p.AuthInfo.(credentials.TLSInfo); ok {
 			for _, item := range mtls.State.PeerCertificates {
-				log.Info().Msgf("request certificate subject:", item.Subject)
+				log.Info().Msgf("request certificate subject: %s", item.Subject)
 			}
 		}
 	}

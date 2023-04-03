@@ -26,7 +26,7 @@ minions: []`
 	}
 
 	if parsed.ServerMode != ModeFollower {
-		t.Error("Expected server mode to be minion")
+		t.Error("Expected server mode to be follower")
 	}
 }
 
@@ -46,7 +46,7 @@ minions:
 	}
 
 	if len(parsed.Followers) != 1 {
-		t.Error("Expected one minion")
+		t.Error("Expected one follower")
 	}
 
 	if parsed.Followers[0].Address != "localhost" {
