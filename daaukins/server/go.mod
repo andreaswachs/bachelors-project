@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/andreaswachs/daaukins-service v0.1.0
+	github.com/andreaswachs/sizes v0.3.0
 	github.com/fsouza/go-dockerclient v1.9.7
 	github.com/google/uuid v1.3.0
 	github.com/rs/zerolog v1.29.0

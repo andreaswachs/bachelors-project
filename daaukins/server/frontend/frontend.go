@@ -6,6 +6,7 @@ import (
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
+	"github.com/andreaswachs/sizes"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/rs/zerolog/log"
 )
@@ -49,7 +50,7 @@ func Provision(options *ProvisionFrontendOptions) (*frontend, error) {
 				"daaukins":     "frontend",
 				"daaukins.lab": options.LabID,
 			},
-			Memory: 2 * 1024 * 1024 * 1024, // 2 GB
+			Memory: sizes.Gigabytes[int64](2),
 			Tty:    true,
 		},
 		HostConfig: &docker.HostConfig{
@@ -57,7 +58,6 @@ func Provision(options *ProvisionFrontendOptions) (*frontend, error) {
 			DNS:         options.DNS,
 		},
 	})
-
 	if err != nil {
 		return nil, err
 	}

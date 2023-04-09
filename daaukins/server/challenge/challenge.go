@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
+	"github.com/andreaswachs/sizes"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/google/uuid"
 )
@@ -67,7 +68,7 @@ func (c *Challenge) Start() error {
 	}
 
 	err = virtual.DockerClient().StartContainer(container.ID, &docker.HostConfig{
-		Memory:    128 * 1024 * 1024, // TODO: pass this from store?
+		Memory:    sizes.Megabytes[int64](128),
 		CPUPeriod: 100000,
 	})
 
