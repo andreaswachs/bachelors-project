@@ -15,7 +15,7 @@ var (
 	serverId string
 )
 
-type MinionConfig struct {
+type FollowerConfig struct {
 	Name    string `yaml:"name"` // TODO: use the name for something useful
 	Address string `yaml:"address"`
 	Port    int    `yaml:"port"`
@@ -32,10 +32,10 @@ type DockerConfig struct {
 }
 
 type Config struct {
-	ServerMode  Mode           `yaml:"server_mode"`
-	ServicePort int            `yaml:"service_port"`
-	Docker      DockerConfig   `yaml:"docker"`
-	Followers   []MinionConfig `yaml:"followers"`
+	ServerMode  Mode             `yaml:"server_mode"`
+	ServicePort int              `yaml:"service_port"`
+	Docker      DockerConfig     `yaml:"docker"`
+	Followers   []FollowerConfig `yaml:"followers"`
 }
 
 type InitializeConfigOptions struct {
@@ -63,7 +63,7 @@ func Initialize(options *InitializeConfigOptions) {
 	log.Info().Msgf("Loaded config: %+v", config)
 }
 
-func GetMinions() []MinionConfig {
+func GetFollowers() []FollowerConfig {
 	return config.Followers
 }
 
