@@ -3,6 +3,7 @@ package service
 import (
 	context "context"
 	"os"
+	"sync"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs"
@@ -129,6 +130,41 @@ func RemoveLab(context context.Context, request *service.RemoveLabRequest) (*ser
 
 	if err := lab.Remove(); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to stop lab: %v", err)
+	}
+
+	return &service.RemoveLabResponse{
+		Ok: true,
+	}, nil
+}
+
+func RemoveAllLabs(ctx context.Context, request *service.RemoveLabRequest) (*service.RemoveLabResponse, error) {
+	if request.ServerId != "" || request.ServerId != config.GetServerID() {
+		return &service.RemoveLabResponse{}, status.Errorf(codes.InvalidArgument, "ServerID was neither empty nor equal to this server's ID")
+	}
+
+	wg := sync.WaitGroup{}
+	errors := make(chan error, len(labs.GetAll()))
+
+	for _, lab := range labs.GetAll() {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			if err := lab.Remove(); err != nil {
+				errors <- err
+			}
+		}()
+	}
+	wg.Wait()
+
+	if len(errors) > 0 {
+		// Empty the channel into an error slice
+		errs := make([]error, len(errors))
+		for i := 0; i < len(errors); i++ {
+			errs[i] = <-errors
+		}
+
+		return &service.RemoveLabResponse{}, status.Errorf(codes.Internal, "failed to remove all labs: %+v", errs)
 	}
 
 	return &service.RemoveLabResponse{
