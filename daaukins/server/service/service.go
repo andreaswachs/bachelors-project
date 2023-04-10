@@ -387,6 +387,7 @@ func (s *Server) GetLabs(context context.Context, request *service.GetLabsReques
 
 	return GetLabs(context, request)
 }
+
 func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRequest) (*service.RemoveLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		// Ask all minions for the given lab
@@ -458,7 +459,7 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 			return nil, err
 		}
 
-		return &service.RemoveLabResponse{}, nil
+		return &service.RemoveLabResponse{Ok: true}, nil
 	}
 
 	return RemoveLab(context, request)
