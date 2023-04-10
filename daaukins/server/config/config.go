@@ -3,10 +3,13 @@
 package config
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"os"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/grpc/credentials"
 	"gopkg.in/yaml.v3"
 )
 
@@ -81,6 +84,32 @@ func GetServicePort() int {
 
 func GetDockerConfig() DockerConfig {
 	return config.Docker
+}
+
+// Credit: https://github.com/islishude/grpc-mtls-example
+// TODO: Change paths to certs
+func LoadKeyPair() credentials.TransportCredentials {
+	certificate, err := tls.LoadX509KeyPair("certs/server.crt", "certs/server.key")
+	if err != nil {
+		log.Panic().Msgf("failed to load server certification: " + err.Error())
+	}
+
+	data, err := os.ReadFile("certs/ca.crt")
+	if err != nil {
+		log.Panic().Msgf("failed to load CA file: " + err.Error())
+	}
+
+	capool := x509.NewCertPool()
+	if !capool.AppendCertsFromPEM(data) {
+		log.Panic().Msgf("can't add ca cert")
+	}
+
+	tlsConfig := &tls.Config{
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		Certificates: []tls.Certificate{certificate},
+		ClientCAs:    capool,
+	}
+	return credentials.NewTLS(tlsConfig)
 }
 
 func load(file string) (Config, error) {
