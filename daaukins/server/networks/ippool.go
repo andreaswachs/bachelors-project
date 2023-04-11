@@ -137,14 +137,14 @@ func getRandomOctet(leftmostOctet int) int {
 		// a random octet that will collide with the bridge network's second octet
 		bridgeNetwork, err := virtual.DockerClient().NetworkInfo("bridge")
 		if err != nil {
-			// log.Panicf("failed to get bridge network info: %+v", err)
+			log.Panic().Msgf("failed to get bridge network info: %+v", err)
 		}
 
 		bridgeSubnet := bridgeNetwork.IPAM.Config[0].Subnet
 		bridgeOctets := strings.Split(bridgeSubnet, ".")
 		secondOctet, err := strconv.Atoi(bridgeOctets[1])
 		if err != nil {
-			// log.Panicf("failed to parse bridge network subnet: %+v", err)
+			log.Panic().Msgf("failed to parse bridge network subnet: %+v", err)
 		}
 
 		for safety := 0; safety < 10000; safety++ {
@@ -154,7 +154,7 @@ func getRandomOctet(leftmostOctet int) int {
 			}
 		}
 
-		// log.Panicf("failed to generate random octet that does not collide with bridge network")
+		log.Panic().Msg("failed to generate random octet that does not collide with bridge network")
 	case 10:
 		return rand.Intn(255)
 	}
