@@ -143,9 +143,9 @@ func RemoveAllLabs(ctx context.Context, request *service.RemoveLabRequest) (*ser
 	}
 
 	wg := sync.WaitGroup{}
-	errors := make(chan error, len(labs.GetAll()))
+	errors := make(chan error, len(labs.All()))
 
-	for _, lab := range labs.GetAll() {
+	for _, lab := range labs.All() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

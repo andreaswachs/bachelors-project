@@ -483,11 +483,11 @@ func (s *Server) GetServers(ctx context.Context, _ *emptypb.Empty) (*service.Get
 			Id:        config.GetServerID(),
 			Mode:      config.GetServerMode().String(),
 			Name:      "Leader",
-			NumLabs:   int32(len(labs.GetAll())),
+			NumLabs:   int32(len(labs.All())),
 			Connected: true,
 		})
 
-		handler := func(f *minion, isConnected bool) {
+		handler := func(f *follower, isConnected bool) {
 			defer numLabsWg.Done()
 			response, err := f.client.GetLabs(context.Background(), &service.GetLabsRequest{})
 			if err != nil {
@@ -513,12 +513,12 @@ func (s *Server) GetServers(ctx context.Context, _ *emptypb.Empty) (*service.Get
 		}
 
 		// Add connected
-		for _, follower := range connectedMinions {
+		for _, follower := range connectedFollowers {
 			numLabsWg.Add(1)
 			go handler(follower, true)
 		}
 
-		for _, follower := range disconnectedMinions {
+		for _, follower := range disconnectedFollowers {
 			numLabsWg.Add(1)
 			go handler(follower, false)
 		}
