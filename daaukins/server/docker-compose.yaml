@@ -12,6 +12,8 @@ services:
       - 50052:50051
     environment:
       - DAAUKINS_USING_DOCKER_COMPOSE=hell_yeah
+      - DAAUKINS_SERVER_CONFIG=server.yaml
+      - DAAUKINS_STORE_CONFIG=store.yaml
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./server.yaml:/app/server.yaml:ro
