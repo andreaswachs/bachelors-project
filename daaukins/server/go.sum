@@ -14,6 +14,8 @@ github.com/andreaswachs/daaukins-service v0.1.4 h1:rdcPUuy1tun01gNVY7XKR8O0MDfZF
 github.com/andreaswachs/daaukins-service v0.1.4/go.mod h1:/pQLycFO2XFcQQ18uEKECfPr9SN4K8FtKsJp111NWgY=
 github.com/andreaswachs/daaukins-service v0.2.0 h1:rB+3UoQATYT3INEXnia+OEVOBjCgoDnS+MoaUZvxDSA=
 github.com/andreaswachs/daaukins-service v0.2.0/go.mod h1:/pQLycFO2XFcQQ18uEKECfPr9SN4K8FtKsJp111NWgY=
+github.com/andreaswachs/daaukins-service v0.2.1 h1:5wk/ql8h9TPfzSIaYZADP1FkWTWyaD/9KUbLa4Tug4I=
+github.com/andreaswachs/daaukins-service v0.2.1/go.mod h1:/pQLycFO2XFcQQ18uEKECfPr9SN4K8FtKsJp111NWgY=
 github.com/andreaswachs/sizes v0.3.0 h1:yJYHokX4bU0a7EzB9Q9jfcmuF+Zf0WCgoW+dxxU4vwU=
 github.com/andreaswachs/sizes v0.3.0/go.mod h1:zbJx4l9RYiGg4DRkcPj685G0NpfedGF9ZyrgqV8uo0M=
 github.com/checkpoint-restore/go-criu/v5 v5.3.0/go.mod h1:E/eQpaFtUKGOOSEBZgmKAcn+zUUwWxqcaKZlF54wK8E=
