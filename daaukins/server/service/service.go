@@ -499,7 +499,7 @@ func (s *Server) RemoveLabs(ctx context.Context, request *service.RemoveLabsRequ
 			}
 
 			wg.Wait()
-			return &service.RemoveLabsResponse{}, nil
+			return &service.RemoveLabsResponse{Ok: true}, nil
 		}
 
 		// Remove all labs from a specific server
@@ -510,7 +510,7 @@ func (s *Server) RemoveLabs(ctx context.Context, request *service.RemoveLabsRequ
 				log.Error().Err(err).Msg("Failed to remove labs from self")
 			}
 
-			return &service.RemoveLabsResponse{}, nil
+			return &service.RemoveLabsResponse{Ok: true}, nil
 		}
 
 		// If the serverId is a follower, remove all labs from that follower
@@ -529,7 +529,7 @@ func (s *Server) RemoveLabs(ctx context.Context, request *service.RemoveLabsRequ
 				log.Debug().
 					Str("serverId", request.ServerId).
 					Msgf("Removed labs from follower %s:%d", connFollower.config.Address, connFollower.config.Port)
-				return &service.RemoveLabsResponse{}, nil
+				return &service.RemoveLabsResponse{Ok: true}, nil
 			}
 		}
 	}
@@ -606,4 +606,49 @@ func (s *Server) GetServers(ctx context.Context, _ *emptypb.Empty) (*service.Get
 
 	return &service.GetServersResponse{}, status.Errorf(codes.FailedPrecondition, `this servers is a follower, not a leader.
 Therefore, it does not know about other servers.`)
+}
+
+func (s *Server) GetFrontends(ctx context.Context, request *service.GetFrontendsRequest) (*service.GetFrontendsResponse, error) {
+	if config.GetServerMode() == config.ModeLeader {
+		// Get all frontends on self and followers
+		frontends := make([]*service.Frontend, 0)
+		frontendsSliceLock := sync.Mutex{}
+		wg := sync.WaitGroup{}
+
+		ownResponse, err := GetFrontends(ctx, request)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to get frontends from self")
+		} else {
+			frontends = append(frontends, ownResponse.GetFrontends()...)
+		}
+
+		for _, connFollower := range connectedFollowers {
+			wg.Add(1)
+			go func(f *follower) {
+				defer wg.Done()
+				response, err := f.client.GetFrontends(ctx, &service.GetFrontendsRequest{})
+				if err != nil {
+					log.Error().
+						Err(err).
+						Str("serverId", f.serverId).
+						Msgf("Failed to get frontends from follower %s:%d", f.config.Address, f.config.Port)
+				} else {
+					frontendsSliceLock.Lock()
+					defer frontendsSliceLock.Unlock()
+
+					// Replace the host with the follower's address
+					for _, frontend := range response.GetFrontends() {
+						frontend.Host = f.config.Address
+					}
+
+					frontends = append(frontends, response.GetFrontends()...)
+				}
+			}(connFollower)
+		}
+
+		wg.Wait()
+		return &service.GetFrontendsResponse{Frontends: frontends}, nil
+	}
+
+	return GetFrontends(ctx, request)
 }
