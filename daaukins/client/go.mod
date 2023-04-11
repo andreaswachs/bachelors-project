@@ -6,7 +6,7 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/andreaswachs/bachelors-project/daaukins/service v0.0.0-20230328115404-4a8ee32dfbd4 // indirect
-	github.com/andreaswachs/daaukins-service v0.2.0 // indirect
+	github.com/andreaswachs/daaukins-service v0.2.1 // indirect
 	github.com/containerd/containerd v1.6.18 // indirect
 	github.com/docker/docker v23.0.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect

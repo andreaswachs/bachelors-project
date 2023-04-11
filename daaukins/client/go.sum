@@ -9,6 +9,8 @@ github.com/andreaswachs/bachelors-project/daaukins/service v0.0.0-20230328115404
 github.com/andreaswachs/bachelors-project/daaukins/service v0.0.0-20230328115404-4a8ee32dfbd4/go.mod h1:sQ3Y14je+W0BERjezXntFhkLnYe8ZPdELmlLBUAxLQI=
 github.com/andreaswachs/daaukins-service v0.2.0 h1:rB+3UoQATYT3INEXnia+OEVOBjCgoDnS+MoaUZvxDSA=
 github.com/andreaswachs/daaukins-service v0.2.0/go.mod h1:/pQLycFO2XFcQQ18uEKECfPr9SN4K8FtKsJp111NWgY=
+github.com/andreaswachs/daaukins-service v0.2.1 h1:5wk/ql8h9TPfzSIaYZADP1FkWTWyaD/9KUbLa4Tug4I=
+github.com/andreaswachs/daaukins-service v0.2.1/go.mod h1:/pQLycFO2XFcQQ18uEKECfPr9SN4K8FtKsJp111NWgY=
 github.com/checkpoint-restore/go-criu/v5 v5.3.0/go.mod h1:E/eQpaFtUKGOOSEBZgmKAcn+zUUwWxqcaKZlF54wK8E=
 github.com/cilium/ebpf v0.7.0/go.mod h1:/oI2+1shJiTGAMgl6/RgJr36Eo1jzrRcAWbcXO2usCA=
 github.com/containerd/console v1.0.3/go.mod h1:7LqA/THxQ86k76b8c/EMSiaJ3h1eZkMkXar0TQ1gf3U=
