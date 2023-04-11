@@ -76,8 +76,8 @@ func init() {
 	labs = make(map[string]*lab, 0)
 }
 
-// GetByName returns a lab with a given name. If the lab does not exist, an error is returned
-func GetByName(name string) (*lab, error) {
+// WithName returns a lab with a given name. If the lab does not exist, an error is returned
+func WithName(name string) (*lab, error) {
 	for _, lab := range labs {
 		if lab.name == name {
 			return lab, nil
@@ -87,7 +87,7 @@ func GetByName(name string) (*lab, error) {
 	return nil, fmt.Errorf("%w: %s", ErrorLabDoesntExist, name)
 }
 
-func GetById(id string) (*lab, error) {
+func WithId(id string) (*lab, error) {
 	if lab, ok := labs[id]; ok {
 		return lab, nil
 	}
@@ -95,8 +95,8 @@ func GetById(id string) (*lab, error) {
 	return nil, fmt.Errorf("%w: %s", ErrorLabDoesntExist, id)
 }
 
-// GetAll returns all the labs that have been provisioned
-func GetAll() []*lab {
+// All returns all the labs that have been provisioned
+func All() []*lab {
 	labsBuffer := make([]*lab, 0)
 
 	for id, aLab := range labs {
@@ -108,7 +108,7 @@ func GetAll() []*lab {
 	return labsBuffer
 }
 
-func GetAllStarted() []*lab {
+func AllStarted() []*lab {
 	labs := make([]*lab, 0)
 
 	for _, lab := range labs {
@@ -146,12 +146,7 @@ func HasCapacity(path string) (bool, error) {
 }
 
 func GetCapacity() (int, error) {
-	availableMemory, err := utils.GetAvailableMemory()
-	if err != nil {
-		return 0, err
-	}
-
-	return availableMemory, nil
+	return utils.GetAvailableMemory()
 }
 
 func Provision(path string) (lab, error) {

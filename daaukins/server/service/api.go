@@ -69,7 +69,7 @@ func GetLab(context context.Context, request *service.GetLabRequest) (*service.G
 		return nil, status.Errorf(codes.InvalidArgument, "id is empty")
 	}
 
-	lab, err := labs.GetById(request.Id)
+	lab, err := labs.WithId(request.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get lab: %v", err)
 	}
@@ -92,7 +92,7 @@ func GetLab(context context.Context, request *service.GetLabRequest) (*service.G
 }
 
 func GetLabs(context context.Context, _request *service.GetLabsRequest) (*service.GetLabsResponse, error) {
-	labs := labs.GetAll()
+	labs := labs.All()
 
 	log.Debug().Int("numLabs", len(labs)).Msg("GetLabs")
 
@@ -119,7 +119,7 @@ func RemoveLab(context context.Context, request *service.RemoveLabRequest) (*ser
 		return nil, status.Errorf(codes.InvalidArgument, "id is empty")
 	}
 
-	lab, err := labs.GetById(request.Id)
+	lab, err := labs.WithId(request.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get lab: %v", err)
 	}

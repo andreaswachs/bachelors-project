@@ -18,27 +18,27 @@ import (
 )
 
 var (
-	connectedMinions    []*minion
-	disconnectedMinions []*minion
-	server              *grpc.Server
-	port                int
+	connectedFollowers    []*follower
+	disconnectedFollowers []*follower
+	server                *grpc.Server
+	port                  int
 )
 
-type minion struct {
+type follower struct {
 	client   service.ServiceClient
-	config   config.MinionConfig
+	config   config.FollowerConfig
 	serverId string
 }
 
 type askHasCapacityResponse struct {
 	response *service.HaveCapacityResponse
-	minion   *minion
+	follower *follower
 	isSelf   bool
 }
 
 type askGetLabResponse struct {
 	response *service.GetLabResponse
-	minion   *minion
+	follower *follower
 	isSelf   bool
 }
 
@@ -66,7 +66,7 @@ func Initialize() {
 		}
 	}()
 
-	connectedMinions, disconnectedMinions = ConnectMinions()
+	connectedFollowers, disconnectedFollowers = ConnectFollowers()
 }
 
 func Stop() {
@@ -75,7 +75,7 @@ func Stop() {
 
 func (s *Server) HaveCapacity(context context.Context, request *service.HaveCapacityRequest) (*service.HaveCapacityResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
-		// If we're the leader, then we will query all minions and return true if a single minion has capacity
+		// If we're the leader, then we will query all follower and return true if a single follower has capacity
 
 		wg := sync.WaitGroup{}
 		responses := make([]*askHasCapacityResponse, 0)
@@ -101,18 +101,18 @@ func (s *Server) HaveCapacity(context context.Context, request *service.HaveCapa
 				HasCapacity: hasCapacity,
 				Capacity:    int32(capacity),
 			},
-			minion: &minion{},
-			isSelf: true,
+			follower: &follower{},
+			isSelf:   true,
 		})
 
-		for _, connectedMinion := range connectedMinions {
+		for _, connectedFollower := range connectedFollowers {
 			wg.Add(1)
-			go func(m *minion) {
+			go func(m *follower) {
 				defer wg.Done()
 
 				response, err := m.client.HaveCapacity(context, request)
 				if err != nil {
-					log.Error().Err(err).Msg("failed to ask minion for capacity")
+					log.Error().Err(err).Msg("failed to ask follower for capacity")
 					return
 				}
 
@@ -121,20 +121,20 @@ func (s *Server) HaveCapacity(context context.Context, request *service.HaveCapa
 
 				responses = append(responses, &askHasCapacityResponse{
 					response: response,
-					minion:   m,
+					follower: m,
 				})
-			}(connectedMinion)
+			}(connectedFollower)
 		}
 
 		wg.Wait()
 
-		// Find out if any of the minions have capacity (or self)
+		// Find out if any of the followers have capacity (or self)
 		hasAnyCapacity := false
 		maxCapacity := 0
 		for _, response := range responses {
 			// The logic for the following two if statments is as follows:
 			// If there is capacity, then the highest capacity will be enough for the lab
-			// If we don't have capacity, then we will return the highest capacity of all minions
+			// If we don't have capacity, then we will return the highest capacity of all followers
 
 			if response.response.HasCapacity {
 				hasAnyCapacity = true
@@ -146,28 +146,28 @@ func (s *Server) HaveCapacity(context context.Context, request *service.HaveCapa
 		}
 
 		if !hasAnyCapacity {
-			log.Debug().Msg("No minion has capacity")
+			log.Debug().Msg("No followers has capacity")
 			return &service.HaveCapacityResponse{
 				HasCapacity: false,
 				Capacity:    int32(maxCapacity),
 			}, nil
 		}
 
-		log.Debug().Msg("At least one minion has capacity")
+		log.Debug().Msg("At least one followers has capacity")
 		return &service.HaveCapacityResponse{
 			HasCapacity: true,
 			Capacity:    int32(maxCapacity),
 		}, nil
 	}
 
-	// If we're a minion, then we will check if we have capacity and return that
+	// If we're a follower, then we will check if we have capacity and return that
 	log.Debug().Msg("Checking if we have capacity")
 	return HaveCapacity(context, request)
 }
 func (s *Server) ScheduleLab(context context.Context, request *service.ScheduleLabRequest) (*service.ScheduleLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
-		// Ask all minions what their capacity is and compare them including our own capacity.
-		// Schedule the lab on the minion with the most capacity (this instance included)
+		// Ask all follower what their capacity is and compare them including our own capacity.
+		// Schedule the lab on the follower with the most capacity (this instance included)
 
 		wg := sync.WaitGroup{}
 		responses := make([]*askHasCapacityResponse, 0)
@@ -195,20 +195,20 @@ func (s *Server) ScheduleLab(context context.Context, request *service.ScheduleL
 					HasCapacity: true,
 					Capacity:    int32(capacity),
 				},
-				minion: &minion{},
-				isSelf: true,
+				follower: &follower{},
+				isSelf:   true,
 			})
 		}
 
-		for _, m := range connectedMinions {
+		for _, m := range connectedFollowers {
 			wg.Add(1)
-			go func(m *minion) {
+			go func(m *follower) {
 				defer wg.Done()
 				response, err := m.client.HaveCapacity(context, &service.HaveCapacityRequest{
 					Lab: request.Lab,
 				})
 				if err != nil {
-					log.Error().Err(err).Msgf("Failed to get capacity from minion %s:%d", m.config.Address, m.config.Port)
+					log.Error().Err(err).Msgf("Failed to get capacity from follower %s:%d", m.config.Address, m.config.Port)
 				}
 
 				if response.HasCapacity {
@@ -217,41 +217,41 @@ func (s *Server) ScheduleLab(context context.Context, request *service.ScheduleL
 
 					responses = append(responses, &askHasCapacityResponse{
 						response: response,
-						minion:   m,
+						follower: m,
 					})
 				}
 
 				log.Debug().
 					Int("capacity", int(response.Capacity)).
 					Bool("hasCapacity", response.HasCapacity).
-					Msgf("Got capacity from minion %s:%d", m.config.Address, m.config.Port)
+					Msgf("Got capacity from follower %s:%d", m.config.Address, m.config.Port)
 			}(m)
 		}
 		wg.Wait()
 
 		if len(responses) == 0 {
-			log.Error().Msg("No minions have capacity")
-			return nil, fmt.Errorf("no minions have capacity")
+			log.Error().Msg("No follower have capacity")
+			return nil, fmt.Errorf("no follower have capacity")
 		}
 
-		// Find the minion with the most capacity
-		bestMinion := responses[0]
+		// Find the follower with the most capacity
+		bestFollower := responses[0]
 		for _, r := range responses {
-			if r.response.Capacity > bestMinion.response.Capacity {
-				bestMinion = r
+			if r.response.Capacity > bestFollower.response.Capacity {
+				bestFollower = r
 			}
 		}
 
-		if bestMinion.isSelf {
+		if bestFollower.isSelf {
 			log.Info().Msg("Scheduling lab on self")
 			return ScheduleLab(context, request)
 		}
 
-		log.Info().Msgf("Scheduling lab on minion %s:%d", bestMinion.minion.config.Address, bestMinion.minion.config.Port)
-		return bestMinion.minion.client.ScheduleLab(context, request)
+		log.Info().Msgf("Scheduling lab on follower %s:%d", bestFollower.follower.config.Address, bestFollower.follower.config.Port)
+		return bestFollower.follower.client.ScheduleLab(context, request)
 	}
 
-	// In this case, this server instance is a minion and we'll just schedule the lab on ourself
+	// In this case, this server instance is a folloer and we'll just schedule the lab on ourself
 	return ScheduleLab(context, request)
 }
 func (s *Server) GetLab(context context.Context, request *service.GetLabRequest) (*service.GetLabResponse, error) {
@@ -261,7 +261,7 @@ func (s *Server) GetLab(context context.Context, request *service.GetLabRequest)
 		responseLock := sync.Mutex{}
 
 		// Check if we have the lab
-		lab, _ := labs.GetById(request.Id)
+		lab, _ := labs.WithId(request.Id)
 		if lab != nil {
 			return &service.GetLabResponse{
 				Lab: &service.LabDescription{
@@ -275,15 +275,15 @@ func (s *Server) GetLab(context context.Context, request *service.GetLabRequest)
 		}
 
 		// Ask all the followers if the lab is located on one of them
-		for _, connMinion := range connectedMinions {
+		for _, connFollower := range connectedFollowers {
 			wg.Add(1)
-			go func(m *minion) {
+			go func(m *follower) {
 				defer wg.Done()
 				response, err := m.client.GetLab(context, &service.GetLabRequest{
 					Id: request.Id,
 				})
 				if err != nil {
-					log.Error().Err(err).Msgf("Failed to get lab from minion %s:%d", m.config.Address, m.config.Port)
+					log.Error().Err(err).Msgf("Failed to get lab from follower %s:%d", m.config.Address, m.config.Port)
 				}
 
 				if response == nil {
@@ -297,32 +297,32 @@ func (s *Server) GetLab(context context.Context, request *service.GetLabRequest)
 
 					responses = append(responses, &askGetLabResponse{
 						response: response,
-						minion:   m,
+						follower: m,
 					})
 				}
 
 				log.Debug().
-					Msgf("Got lab from minion %s:%d", m.config.Address, m.config.Port)
-			}(connMinion)
+					Msgf("Got lab from folloer %s:%d", m.config.Address, m.config.Port)
+			}(connFollower)
 		}
 		wg.Wait()
 
 		if len(responses) == 0 {
-			log.Error().Msg("No minions have the lab")
-			return nil, fmt.Errorf("no minions have the lab")
+			log.Error().Msg("No follower have the lab")
+			return nil, fmt.Errorf("no folloer have the lab")
 		}
 
-		// Find the minion who has the lab
-		theMinion := responses[0]
+		// Find the follower who has the lab
+		theFollower := responses[0]
 		for _, r := range responses {
 			if r.response.Lab != nil {
-				theMinion = r
+				theFollower = r
 				break
 			}
 		}
 
 		// TODO: expand response type with location of lab
-		return theMinion.response, nil
+		return theFollower.response, nil
 	}
 
 	return GetLab(context, request)
@@ -345,13 +345,13 @@ func (s *Server) GetLabs(context context.Context, request *service.GetLabsReques
 			responses = append(responses, localLabs)
 		}
 
-		for _, connMinion := range connectedMinions {
+		for _, connFollower := range connectedFollowers {
 			wg.Add(1)
-			go func(m *minion) {
+			go func(m *follower) {
 				defer wg.Done()
 				response, err := m.client.GetLabs(context, &service.GetLabsRequest{})
 				if err != nil {
-					log.Error().Err(err).Msgf("Failed to get labs from minion %s:%d", m.config.Address, m.config.Port)
+					log.Error().Err(err).Msgf("Failed to get labs from follower %s:%d", m.config.Address, m.config.Port)
 				}
 
 				if len(response.Labs) > 0 {
@@ -362,13 +362,13 @@ func (s *Server) GetLabs(context context.Context, request *service.GetLabsReques
 				}
 
 				log.Debug().
-					Msgf("Got labs from minion %s:%d", m.config.Address, m.config.Port)
-			}(connMinion)
+					Msgf("Got labs from follower %s:%d", m.config.Address, m.config.Port)
+			}(connFollower)
 		}
 		wg.Wait()
 
 		if len(responses) == 0 {
-			log.Debug().Msg("No minions have labs")
+			log.Debug().Msg("No follower have labs")
 			return &service.GetLabsResponse{
 				Labs: make([]*service.LabDescription, 0),
 			}, nil
@@ -390,17 +390,17 @@ func (s *Server) GetLabs(context context.Context, request *service.GetLabsReques
 
 func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRequest) (*service.RemoveLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
-		// Ask all minions for the given lab
+		// Ask all follower for the given lab
 		// If we find it, remove it
 		// If we don't find it, return an error
 
 		wg := sync.WaitGroup{}
 		labFound := false
-		theMinion := &minion{}
+		theFollower := &follower{}
 		responseLock := sync.Mutex{}
 
 		// Check if the lab is hosted on this server
-		lab, err := labs.GetById(request.Id)
+		lab, err := labs.WithId(request.Id)
 		if err == nil {
 			if lab != nil {
 				err = lab.Remove()
@@ -413,15 +413,15 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 			}
 		}
 
-		for _, connMinion := range connectedMinions {
+		for _, connFollower := range connectedFollowers {
 			wg.Add(1)
-			go func(m *minion) {
+			go func(m *follower) {
 				defer wg.Done()
 				response, err := m.client.GetLab(context, &service.GetLabRequest{
 					Id: request.Id,
 				})
 				if err != nil {
-					log.Error().Err(err).Msgf("Failed to get lab from minion %s:%d", m.config.Address, m.config.Port)
+					log.Error().Err(err).Msgf("Failed to get lab from follower %s:%d", m.config.Address, m.config.Port)
 				}
 
 				if response == nil {
@@ -434,28 +434,28 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 					defer responseLock.Unlock()
 
 					labFound = true
-					theMinion = m
+					theFollower = m
 				}
 
 				log.Debug().
-					Msgf("Got lab from minion %s:%d", m.config.Address, m.config.Port)
-			}(connMinion)
+					Msgf("Got lab from follower %s:%d", m.config.Address, m.config.Port)
+			}(connFollower)
 		}
 
 		wg.Wait()
 
 		if !labFound {
-			log.Error().Msg("No minions have the lab")
-			return nil, fmt.Errorf("no minions have the lab")
+			log.Error().Msg("No follower have the lab")
+			return nil, fmt.Errorf("no followers have the lab")
 
 		}
 
-		// Remove the lab from the minion
-		_, err = theMinion.client.RemoveLab(context, &service.RemoveLabRequest{
+		// Remove the lab from the follower
+		_, err = theFollower.client.RemoveLab(context, &service.RemoveLabRequest{
 			Id: request.Id,
 		})
 		if err != nil {
-			log.Error().Err(err).Msgf("Failed to remove lab from minion %s:%d", theMinion.config.Address, theMinion.config.Port)
+			log.Error().Err(err).Msgf("Failed to remove lab from follower %s:%d", theFollower.config.Address, theFollower.config.Port)
 			return nil, err
 		}
 
