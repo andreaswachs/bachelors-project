@@ -119,11 +119,11 @@ func probeConnectedFollowers() {
 					out <- i
 				}
 
-				cancel()
 			}(i, f, followersToMove)
 		}
 
 		sleepContext(ctx, 3*time.Second)
+		cancel()
 
 		// Move all followers that failed to respond to the disconnected list
 		for len(followersToMove) > 0 {
