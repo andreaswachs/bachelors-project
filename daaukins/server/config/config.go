@@ -3,6 +3,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
@@ -11,8 +12,9 @@ import (
 )
 
 var (
-	config   Config
-	serverId string
+	config      Config
+	serverId    string
+	confOptsObj configOptions = &defaultConfigOptions{}
 )
 
 type FollowerConfig struct {
@@ -38,29 +40,53 @@ type Config struct {
 	Followers   []FollowerConfig `yaml:"followers"`
 }
 
+type configOptions interface {
+	getConfigFilename() string
+	isUsingDockerCompose() bool
+	newServerID() string
+}
+
+type defaultConfigOptions struct{}
+
+func (d *defaultConfigOptions) getConfigFilename() string {
+	filename := os.Getenv("DAAUKINS_SERVER_CONFIG")
+	if filename == "" {
+		return "server.yaml"
+	}
+
+	return filename
+}
+
+func (d *defaultConfigOptions) isUsingDockerCompose() bool {
+	return os.Getenv("DAAUKINS_USING_DOCKER_COMPOSE") != ""
+}
+
+func (d *defaultConfigOptions) newServerID() string {
+	return utils.RandomShortName()
+}
+
 type InitializeConfigOptions struct {
 	ConfigFile string
 }
 
-func Initialize(options *InitializeConfigOptions) {
-	configFilename := "server.yaml"
-
-	if options != nil && options.ConfigFile != "" {
-		configFilename = options.ConfigFile
-	}
-
+func Initialize() error {
 	// Load the configuration from the config file
-	configBuffer, err := load(configFilename)
+	configBuffer, err := load(confOptsObj.getConfigFilename())
 	if err != nil {
-		log.Panic().Err(err).Msg("Failed to load config file")
+		log.Error().
+			Err(err).
+			Msg("Failed to load config file")
+
+		return err
 	}
 
 	config = configBuffer
 
 	// Set the server id
-	serverId = utils.RandomShortName()
+	serverId = confOptsObj.newServerID()
 
 	log.Info().Msgf("Loaded config: %+v", config)
+	return nil
 }
 
 func GetFollowers() []FollowerConfig {
@@ -84,7 +110,7 @@ func GetDockerConfig() DockerConfig {
 }
 
 func IsUsingDockerCompose() bool {
-	return os.Getenv("DOCKER_COMPOSE") != ""
+	return confOptsObj.isUsingDockerCompose()
 }
 
 func load(file string) (Config, error) {
@@ -97,6 +123,10 @@ func load(file string) (Config, error) {
 }
 
 func parse(input []byte) (Config, error) {
+	if len(input) == 0 {
+		return Config{}, fmt.Errorf("config file is empty")
+	}
+
 	var config Config
 	err := yaml.Unmarshal(input, &config)
 
