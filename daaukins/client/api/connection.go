@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andreaswachs/bachelors-project/daaukins/service"
+	service "github.com/andreaswachs/daaukins-service"
 	"google.golang.org/grpc"
 )
 

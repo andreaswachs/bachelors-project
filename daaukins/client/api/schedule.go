@@ -1,6 +1,6 @@
 package api
 
-import "github.com/andreaswachs/bachelors-project/daaukins/service"
+import service "github.com/andreaswachs/daaukins-service"
 
 func ScheduleLab(lab string) (*service.ScheduleLabResponse, error) {
 	ctx, cancelFunc := newCtx()
