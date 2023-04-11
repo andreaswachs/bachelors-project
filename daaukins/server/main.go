@@ -12,6 +12,7 @@ import (
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/service"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -22,6 +23,13 @@ func main() {
 	flag.Parse()
 
 	if err := config.Initialize(); err != nil {
+		return
+	}
+
+	if err := virtual.Initialize(); err != nil {
+		log.Error().
+			Err(err).
+			Msg("failed to initialize virtualization")
 		return
 	}
 
