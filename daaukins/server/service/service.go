@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	sync "sync"
+	"time"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs"
@@ -20,8 +21,10 @@ import (
 var (
 	connectedFollowers    []*follower
 	disconnectedFollowers []*follower
-	server                *grpc.Server
-	port                  int
+	followersLock         *sync.Mutex
+
+	server *grpc.Server
+	port   int
 )
 
 type follower struct {
@@ -66,7 +69,39 @@ func Initialize() {
 		}
 	}()
 
-	connectedFollowers, disconnectedFollowers = ConnectFollowers()
+	// We're pooling all followers into the disconnected followers list,
+	// and then we'll attempt to connect to them
+	for _, followerConfig := range config.GetFollowers() {
+		disconnectedFollowers = append(disconnectedFollowers, &follower{
+			config: followerConfig,
+		})
+	}
+
+	go updateFollowers()
+}
+
+func getConnectedFollowers() []*follower {
+	followersLock.Lock()
+	defer followersLock.Unlock()
+
+	return connectedFollowers
+}
+
+func getDisconnectedFollowers() []*follower {
+	followersLock.Lock()
+	defer followersLock.Unlock()
+
+	return disconnectedFollowers
+}
+
+func updateFollowers() {
+	for {
+		followersLock.Lock()
+		connectedFollowers, disconnectedFollowers = ConnectFollowers()
+		followersLock.Unlock()
+
+		time.Sleep(5 * time.Second)
+	}
 }
 
 func Stop() {
@@ -105,7 +140,7 @@ func (s *Server) HaveCapacity(context context.Context, request *service.HaveCapa
 			isSelf:   true,
 		})
 
-		for _, connectedFollower := range connectedFollowers {
+		for _, connectedFollower := range getConnectedFollowers() {
 			wg.Add(1)
 			go func(m *follower) {
 				defer wg.Done()
@@ -200,7 +235,7 @@ func (s *Server) ScheduleLab(context context.Context, request *service.ScheduleL
 			})
 		}
 
-		for _, m := range connectedFollowers {
+		for _, m := range getConnectedFollowers() {
 			wg.Add(1)
 			go func(m *follower) {
 				defer wg.Done()
@@ -282,7 +317,7 @@ func (s *Server) GetLab(context context.Context, request *service.GetLabRequest)
 		}
 
 		// Ask all the followers if the lab is located on one of them
-		for _, connFollower := range connectedFollowers {
+		for _, connFollower := range getConnectedFollowers() {
 			wg.Add(1)
 			go func(m *follower) {
 				defer wg.Done()
@@ -352,7 +387,7 @@ func (s *Server) GetLabs(context context.Context, request *service.GetLabsReques
 			responses = append(responses, localLabs)
 		}
 
-		for _, connFollower := range connectedFollowers {
+		for _, connFollower := range getConnectedFollowers() {
 			wg.Add(1)
 			go func(m *follower) {
 				defer wg.Done()
@@ -420,7 +455,7 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 			}
 		}
 
-		for _, connFollower := range connectedFollowers {
+		for _, connFollower := range getConnectedFollowers() {
 			wg.Add(1)
 			go func(m *follower) {
 				defer wg.Done()
@@ -485,7 +520,7 @@ func (s *Server) RemoveLabs(ctx context.Context, request *service.RemoveLabsRequ
 				log.Error().Err(err).Msg("Failed to remove labs from self")
 			}
 
-			for _, connFollower := range connectedFollowers {
+			for _, connFollower := range getConnectedFollowers() {
 				wg.Add(1)
 				go func(f *follower) {
 					defer wg.Done()
@@ -521,7 +556,7 @@ func (s *Server) RemoveLabs(ctx context.Context, request *service.RemoveLabsRequ
 		}
 
 		// If the serverId is a follower, remove all labs from that follower
-		for _, connFollower := range connectedFollowers {
+		for _, connFollower := range getConnectedFollowers() {
 			if connFollower.serverId == request.ServerId {
 				_, err := connFollower.client.RemoveLabs(ctx, &service.RemoveLabsRequest{
 					ServerId: request.ServerId,
@@ -603,12 +638,12 @@ func (s *Server) GetServers(ctx context.Context, _ *emptypb.Empty) (*service.Get
 		}
 
 		// Add connected
-		for _, follower := range connectedFollowers {
+		for _, follower := range getConnectedFollowers() {
 			numLabsWg.Add(1)
 			go handler(follower, true)
 		}
 
-		for _, follower := range disconnectedFollowers {
+		for _, follower := range getDisconnectedFollowers() {
 			numLabsWg.Add(1)
 			go handler(follower, false)
 		}
@@ -638,7 +673,7 @@ func (s *Server) GetFrontends(ctx context.Context, request *service.GetFrontends
 			frontends = append(frontends, ownResponse.GetFrontends()...)
 		}
 
-		for _, connFollower := range connectedFollowers {
+		for _, connFollower := range getConnectedFollowers() {
 			wg.Add(1)
 			go func(f *follower) {
 				defer wg.Done()
