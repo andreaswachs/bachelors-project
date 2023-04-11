@@ -7,6 +7,7 @@ import (
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
+	"github.com/andreaswachs/sizes"
 	docker "github.com/fsouza/go-dockerclient"
 )
 
@@ -83,7 +84,7 @@ func Provision(options *ProvisionDNSOptions) (*DNSService, error) {
 		Name: fmt.Sprintf("daaukins-dns-%s", utils.RandomName()),
 		Config: &docker.Config{
 			Image:  config.GetDockerConfig().Dns.Image,
-			Memory: 128 * 1024 * 1024,
+			Memory: sizes.Megabytes[int64](128),
 			Labels: map[string]string{
 				"daaukins":         "network-service",
 				"daaukins.service": "dns",

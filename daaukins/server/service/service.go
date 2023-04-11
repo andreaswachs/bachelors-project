@@ -12,6 +12,9 @@ import (
 	service "github.com/andreaswachs/daaukins-service"
 	"github.com/rs/zerolog/log"
 	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 var (
@@ -22,8 +25,9 @@ var (
 )
 
 type follower struct {
-	client service.ServiceClient
-	config config.FollowerConfig
+	client   service.ServiceClient
+	config   config.FollowerConfig
+	serverId string
 }
 
 type askHasCapacityResponse struct {
@@ -233,13 +237,20 @@ func (s *Server) ScheduleLab(context context.Context, request *service.ScheduleL
 		// Find the follower with the most capacity
 		bestFollower := responses[0]
 		for _, r := range responses {
+			if request.ServerId != "" {
+				if r.follower.serverId == request.ServerId {
+					bestFollower = r
+					break
+				}
+			}
+
 			if r.response.Capacity > bestFollower.response.Capacity {
 				bestFollower = r
 			}
 		}
 
 		if bestFollower.isSelf {
-			log.Info().Msg("Scheduling lab on self")
+			log.Info().Msg("Scheduling lab on leader")
 			return ScheduleLab(context, request)
 		}
 
@@ -383,6 +394,7 @@ func (s *Server) GetLabs(context context.Context, request *service.GetLabsReques
 
 	return GetLabs(context, request)
 }
+
 func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRequest) (*service.RemoveLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		// Ask all follower for the given lab
@@ -454,10 +466,84 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 			return nil, err
 		}
 
-		return &service.RemoveLabResponse{}, nil
+		return &service.RemoveLabResponse{Ok: true}, nil
 	}
 
 	return RemoveLab(context, request)
+}
+
+func (s *Server) RemoveLabs(ctx context.Context, request *service.RemoveLabsRequest) (*service.RemoveLabsResponse, error) {
+	if config.GetServerMode() == config.ModeLeader {
+
+		if request.ServerId == "" {
+			// Remove all labs from all servers, including ourselves
+			wg := sync.WaitGroup{}
+
+			// Remove labs from ourselves
+			_, err := RemoveAllLabs(ctx, request)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to remove labs from self")
+			}
+
+			for _, connFollower := range connectedFollowers {
+				wg.Add(1)
+				go func(f *follower) {
+					defer wg.Done()
+					_, err := f.client.RemoveLabs(ctx, &service.RemoveLabsRequest{
+						ServerId: request.ServerId,
+					})
+					if err != nil {
+						log.Error().
+							Err(err).
+							Str("serverId", request.ServerId).
+							Msgf("Failed to remove labs from follower %s:%d", f.config.Address, f.config.Port)
+					}
+
+					log.Debug().
+						Str("serverId", request.ServerId).
+						Msgf("Removed labs from follower %s:%d", f.config.Address, f.config.Port)
+				}(connFollower)
+			}
+
+			wg.Wait()
+			return &service.RemoveLabsResponse{Ok: true}, nil
+		}
+
+		// Remove all labs from a specific server
+		// If the serverId is our own, remove all labs from ourselves
+		if request.ServerId == config.GetServerID() {
+			_, err := RemoveAllLabs(ctx, request)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to remove labs from self")
+			}
+
+			return &service.RemoveLabsResponse{Ok: true}, nil
+		}
+
+		// If the serverId is a follower, remove all labs from that follower
+		for _, connFollower := range connectedFollowers {
+			if connFollower.serverId == request.ServerId {
+				_, err := connFollower.client.RemoveLabs(ctx, &service.RemoveLabsRequest{
+					ServerId: request.ServerId,
+				})
+				if err != nil {
+					log.Error().
+						Err(err).
+						Str("serverId", request.ServerId).
+						Msgf("Failed to remove labs from follower %s:%d", connFollower.config.Address, connFollower.config.Port)
+				}
+
+				log.Debug().
+					Str("serverId", request.ServerId).
+					Msgf("Removed labs from follower %s:%d", connFollower.config.Address, connFollower.config.Port)
+				return &service.RemoveLabsResponse{Ok: true}, nil
+			}
+		}
+	}
+
+	// If we receive the request and the server is a follower, then we send the request along to the implementation directly
+	// which has sufficient error handling
+	return RemoveAllLabs(ctx, request)
 }
 
 func (s *Server) GetServerMode(context context.Context, request *service.GetServerModeRequest) (*service.GetServerModeResponse, error) {
@@ -465,4 +551,120 @@ func (s *Server) GetServerMode(context context.Context, request *service.GetServ
 		Mode:     config.GetServerMode().String(),
 		ServerId: config.GetServerID(),
 	}, nil
+}
+
+func (s *Server) GetServers(ctx context.Context, _ *emptypb.Empty) (*service.GetServersResponse, error) {
+	if config.GetServerMode() == config.ModeLeader {
+		servers := make([]*service.Server, 0)
+		serversSliceLock := sync.Mutex{}
+		numLabsWg := sync.WaitGroup{}
+
+		// Add ourselves
+		servers = append(servers, &service.Server{
+			Id:        config.GetServerID(),
+			Mode:      config.GetServerMode().String(),
+			Name:      "Leader",
+			NumLabs:   int32(len(labs.All())),
+			Connected: true,
+		})
+
+		handler := func(f *follower, isConnected bool) {
+			defer numLabsWg.Done()
+			log.Debug().Msgf("GetServers(): Getting number of labs from follower %s:%d", f.config.Address, f.config.Port)
+
+			response, err := f.client.GetLabs(context.Background(), &service.GetLabsRequest{})
+			if err != nil {
+				log.Error().Err(err).Msgf("Failed to get number of labs from follower %s:%d", f.config.Address, f.config.Port)
+				return
+			}
+
+			var numLabs int32
+			if response != nil && response.GetLabs() != nil {
+				numLabs = int32(len(response.GetLabs()))
+			}
+
+			serversSliceLock.Lock()
+			defer serversSliceLock.Unlock()
+
+			server := &service.Server{
+				Id:        f.serverId,
+				Mode:      "follower",
+				Name:      f.config.Name,
+				NumLabs:   numLabs,
+				Connected: isConnected,
+			}
+
+			log.Debug().
+				Str("serverId", f.serverId).
+				Str("name", f.config.Name).
+				Msgf("Adding follower %s:%d to servers list", f.config.Address, f.config.Port)
+
+			servers = append(servers, server)
+		}
+
+		// Add connected
+		for _, follower := range connectedFollowers {
+			numLabsWg.Add(1)
+			go handler(follower, true)
+		}
+
+		for _, follower := range disconnectedFollowers {
+			numLabsWg.Add(1)
+			go handler(follower, false)
+		}
+
+		numLabsWg.Wait()
+
+		return &service.GetServersResponse{
+			Servers: servers,
+		}, nil
+	}
+
+	return &service.GetServersResponse{}, status.Errorf(codes.FailedPrecondition, `this servers is a follower, not a leader.
+Therefore, it does not know about other servers.`)
+}
+
+func (s *Server) GetFrontends(ctx context.Context, request *service.GetFrontendsRequest) (*service.GetFrontendsResponse, error) {
+	if config.GetServerMode() == config.ModeLeader {
+		// Get all frontends on self and followers
+		frontends := make([]*service.Frontend, 0)
+		frontendsSliceLock := sync.Mutex{}
+		wg := sync.WaitGroup{}
+
+		ownResponse, err := GetFrontends(ctx, request)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to get frontends from self")
+		} else {
+			frontends = append(frontends, ownResponse.GetFrontends()...)
+		}
+
+		for _, connFollower := range connectedFollowers {
+			wg.Add(1)
+			go func(f *follower) {
+				defer wg.Done()
+				response, err := f.client.GetFrontends(ctx, &service.GetFrontendsRequest{})
+				if err != nil {
+					log.Error().
+						Err(err).
+						Str("serverId", f.serverId).
+						Msgf("Failed to get frontends from follower %s:%d", f.config.Address, f.config.Port)
+				} else {
+					frontendsSliceLock.Lock()
+					defer frontendsSliceLock.Unlock()
+
+					// Replace the host with the follower's address
+					for _, frontend := range response.GetFrontends() {
+						frontend.Host = f.config.Address
+					}
+
+					frontends = append(frontends, response.GetFrontends()...)
+				}
+			}(connFollower)
+		}
+
+		wg.Wait()
+		return &service.GetFrontendsResponse{Frontends: frontends}, nil
+	}
+
+	return GetFrontends(ctx, request)
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/andreaswachs/bachelors-project/daaukins/server/store"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
+	"github.com/andreaswachs/sizes"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
@@ -390,7 +391,7 @@ func (l *lab) Start() error {
 				"daaukins.service": "proxy",
 				"daaukins.lab":     l.id,
 			},
-			Memory: 64 * 1024 * 1024, // 64MB
+			Memory: sizes.Megabytes[int64](64),
 			Env: []string{
 				fmt.Sprintf("LOCAL_PORT=%d", l.frontend.GetProxyPort()),
 				"REMOTE_PORT=8080",
@@ -505,6 +506,10 @@ func (l *lab) GetId() string {
 
 func (l *lab) GetChallenges() []*challenge.Challenge {
 	return l.challenges
+}
+
+func (l *lab) GetFrontend() frontend.T {
+	return l.frontend
 }
 
 func load(path string) (labDTO, error) {

@@ -14,37 +14,44 @@ import (
 // removeCmd represents the remove command
 var removeCmd = &cobra.Command{
 	Use:   "remove",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Args: cobra.ExactArgs(1),
+	Short: "Remove single labs by id, or labs either by server or all",
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		id := args[0]
+		switch len(args) {
+		case 0:
+			if serverId == "unset" && !all {
+				cmd.Println("You need to specify a server id or use the --all flag")
+				cmd.Help()
+				os.Exit(1)
+			}
 
-		response, err := api.RemoveLab(id)
-		if err != nil {
-			cmd.Println("Error removing lab:", err)
-			os.Exit(1)
+			if all {
+				serverId = ""
+			}
+
+			response, err := api.RemoveLabs(serverId)
+			if err != nil {
+				cmd.Println("Error removing all labs:", err)
+				os.Exit(1)
+			}
+
+			cmd.Println("All labs removed successfully:", response.Ok)
+			return
+		case 1:
+			response, err := api.RemoveLab(args[0])
+			if err != nil {
+				cmd.Println("Error removing lab:", err)
+				os.Exit(1)
+			}
+
+			cmd.Println("Lab removed successfully:", response.Ok)
 		}
-
-		cmd.Println("Lab removed successfully:", response.Ok)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(removeCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// removeCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// removeCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	removeCmd.Flags().BoolVarP(&all, "all", "a", false, "Remove all labs")
+	removeCmd.Flags().StringVarP(&serverId, "serverid", "s", "unset", "Remove all labs from a specific server")
 }

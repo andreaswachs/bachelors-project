@@ -5,46 +5,102 @@ package cmd
 
 import (
 	"github.com/andreaswachs/bachelors-project/daaukins/client/api"
-	"github.com/andreaswachs/bachelors-project/daaukins/service"
 	"github.com/spf13/cobra"
+)
+
+var (
+	serverId string
+	all      bool = true
 )
 
 // getCmd represents the get command
 var getCmd = &cobra.Command{
-	Use:   "get [labs/identifier]",
+	Use:   "get [labs/servers/frontends/identifier]",
 	Short: "Get information about a lab or all labs",
 	Long: `If you specify a lab identifier, you will get information about that lab.
-	If you get "labs" as an argument, you will get a list of all labs.`,
+	Any other argument will get you information about all <resource>.`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		switch args[0] {
 		case "labs":
 			labs(cmd, args)
+		case "servers":
+			servers(cmd, args)
+		case "frontends":
+			frontends(cmd, args)
 		default:
 			lab(cmd, args)
 		}
 	},
 }
 
+func frontends(cmd *cobra.Command, args []string) {
+	response, err := api.GetFrontends()
+	if err != nil {
+		cmd.Printf("There were an error when trying to get all frontends:\n%s\n", err)
+		return
+	}
+
+	cmd.Printf("HOST\t\tPORT\t\tSERVER\n")
+	for _, frontend := range response.Frontends {
+		cmd.Printf("%s\t%s\t\t%s\n",
+			frontend.Host,
+			frontend.Port,
+			frontend.ServerId,
+		)
+	}
+}
+
 func lab(cmd *cobra.Command, args []string) {
 	response, err := api.GetLab(args[0])
 	if err != nil {
-		cmd.Println("There were an error when trying to get the lab: ")
+		cmd.Printf("There were an error when trying to get the lab:\n%s\n", err)
+		return
 	}
 
 	ppLabHeader(cmd)
-	ppLab(cmd, response.Lab)
+	cmd.Printf("%s\t%s\t%d\t\t%d\t%s\n",
+		response.Lab.Id,
+		response.Lab.Name,
+		response.Lab.NumChallenges,
+		response.Lab.NumUsers,
+		response.Lab.ServerId,
+	)
 }
 
 func labs(cmd *cobra.Command, args []string) {
-	response, err := api.GetLabs()
+	response, err := api.GetLabs(serverId)
 	if err != nil {
 		cmd.Println("There were an error when trying to get all labs: ")
 	}
 
 	ppLabHeader(cmd)
 	for _, lab := range response.Labs {
-		ppLab(cmd, lab)
+		cmd.Printf("%s\t%s\t%d\t\t%d\t%s\n",
+			lab.Id,
+			lab.Name,
+			lab.NumChallenges,
+			lab.NumUsers,
+			lab.ServerId,
+		)
+	}
+}
+
+func servers(cmd *cobra.Command, args []string) {
+	response, err := api.GetServers()
+	if err != nil {
+		cmd.Println("There were an error when trying to get all servers: ")
+	}
+
+	cmd.Printf("ID\t\tNAME\t\tMODE\tLABS\tCONNECTED\n")
+	for _, server := range response.Servers {
+		cmd.Printf("%s\t%s\t\t%s\t%d\t%t\n",
+			server.Id,
+			server.Name,
+			server.Mode,
+			server.NumLabs,
+			server.Connected,
+		)
 	}
 }
 
@@ -52,26 +108,8 @@ func ppLabHeader(cmd *cobra.Command) {
 	cmd.Printf("Id\t\t\t\tName\t\tChallenges\tUsers\tServerId\n")
 }
 
-func ppLab(cmd *cobra.Command, lab *service.LabDescription) {
-	cmd.Printf("%s\t%s\t%d\t\t%d\t%s\n",
-		lab.Id,
-		lab.Name,
-		lab.NumChallenges,
-		lab.NumUsers,
-		lab.ServerId,
-	)
-}
-
 func init() {
 	rootCmd.AddCommand(getCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// getCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// getCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	getCmd.Flags().StringVarP(&serverId, "id", "i", "", "specifies a server ID for the given resource")
 }
