@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
-	"sync"
+	"time"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	service "github.com/andreaswachs/daaukins-service"
@@ -11,69 +11,96 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
+type connectionStatus uint8
+
+const (
+	connected connectionStatus = iota
+	disconnected
+)
+
+type connAttempt struct {
+	follower *follower
+	result   connectionStatus
+}
+
 // ConnectFollowers attepmts to connect to all follower in the config
 func ConnectFollowers() ([]*follower, []*follower) {
 	connectedFollowerBuffer := make([]*follower, 0)
+	connectedFollowerBuffer = append(connectedFollowerBuffer, connectedFollowers...)
 	disconnectedFollowerBuffer := make([]*follower, 0)
 
-	connectedFollowerBufferLock := sync.Mutex{}
-	disconnectedFollowerBufferLock := sync.Mutex{}
-	wg := sync.WaitGroup{}
+	attemps := make(chan connAttempt)
 
-	for _, followerConfig := range config.GetFollowers() {
-		log.Debug().
-			Str("address", followerConfig.Address).
-			Int("port", followerConfig.Port).
-			Msg("Attempting to connect to follower")
-
-		wg.Add(1)
-		go func(f config.FollowerConfig) {
-			defer wg.Done()
-			followerBuffer := &follower{
-				config: f,
-			}
-
-			log.Debug().
-				Str("address", followerBuffer.config.Address).
-				Int("port", followerBuffer.config.Port).
-				Msg("Begin attempt to connect to follower")
-
-			// TODO: mTLS
-			conn, err := grpc.Dial(fmt.Sprintf("%s:%d", f.Address, f.Port), grpc.WithInsecure())
-			if err != nil {
-				disconnectedFollowerBufferLock.Lock()
-				defer disconnectedFollowerBufferLock.Unlock()
-
-				disconnectedFollowerBuffer = append(disconnectedFollowerBuffer, followerBuffer)
-				log.Error().Err(err).Msgf("Failed to connect to follower %s:%d", f.Address, f.Port)
-				return
-			}
-
-			serviceClient := service.NewServiceClient(conn)
-			followerBuffer.client = serviceClient
-
-			response, err := serviceClient.GetServerMode(context.Background(), &service.GetServerModeRequest{})
-			if err != nil {
-				log.Error().Err(err).Msgf("Failed to get server mode from follower %s:%d", f.Address, f.Port)
-				return
-			}
-
-			if response.Mode == config.ModeLeader.String() {
-				log.Error().Msgf("Server %s:%d is a leader, but it should be a follower. The server will not be used.", f.Address, f.Port)
-				return
-			}
-
-			followerBuffer.serverId = response.ServerId
-
-			connectedFollowerBufferLock.Lock()
-			defer connectedFollowerBufferLock.Unlock()
-
-			connectedFollowerBuffer = append(connectedFollowerBuffer, followerBuffer)
-			log.Info().Msgf("Connected to follower %s:%d", f.Address, f.Port)
-		}(followerConfig)
+	for _, follower := range disconnectedFollowers {
+		go connect(follower, attemps)
 	}
 
-	wg.Wait()
+	for i := 0; i < len(disconnectedFollowers); i++ {
+		attempt := <-attemps
+		switch attempt.result {
+		case connected:
+			connectedFollowerBuffer = append(connectedFollowerBuffer, attempt.follower)
+		case disconnected:
+			disconnectedFollowerBuffer = append(disconnectedFollowerBuffer, attempt.follower)
+		}
+	}
 
 	return connectedFollowerBuffer, disconnectedFollowerBuffer
+}
+
+func connect(f *follower, comm chan<- connAttempt) {
+	log.Debug().
+		Str("address", f.config.Address).
+		Int("port", f.config.Port).
+		Msg("Begin attempt to connect to follower")
+
+	ctx, cancel := shortTimeoutContext()
+	defer cancel()
+
+	conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s:%d", f.config.Address, f.config.Port), grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to connect to follower %s:%d", f.config.Address, f.config.Port)
+
+		comm <- connAttempt{
+			follower: f,
+			result:   disconnected,
+		}
+		return
+	}
+
+	serviceClient := service.NewServiceClient(conn)
+	f.client = serviceClient
+
+	response, err := serviceClient.GetServerMode(context.Background(), &service.GetServerModeRequest{})
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to get server mode from follower %s:%d", f.config.Address, f.config.Port)
+
+		comm <- connAttempt{
+			follower: f,
+			result:   disconnected,
+		}
+		return
+	}
+
+	if response.Mode == config.ModeLeader.String() {
+		log.Error().Msgf("Server %s:%d is a leader, but it should be a follower. The server will not be used.", f.config.Address, f.config.Port)
+
+		comm <- connAttempt{
+			follower: f,
+			result:   disconnected,
+		}
+		return
+	}
+
+	f.serverId = response.ServerId
+
+	log.Info().Msgf("Connected to follower %s:%d", f.config.Address, f.config.Port)
+	comm <- connAttempt{
+		follower: f,
+		result:   connected,
+	}
+}
+
+func shortTimeoutContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 3*time.Second)
 }
