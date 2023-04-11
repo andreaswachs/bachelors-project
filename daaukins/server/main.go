@@ -18,16 +18,12 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-var (
-	configFilename = flag.String("config", "server.yaml", "path to config file")
-)
-
 func main() {
 	flag.Parse()
 
-	config.Initialize(&config.InitializeConfigOptions{
-		ConfigFile: *configFilename,
-	})
+	if err := config.Initialize(); err != nil {
+		return
+	}
 
 	service.Initialize()
 
