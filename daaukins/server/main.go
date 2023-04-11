@@ -12,6 +12,7 @@ import (
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/service"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/store"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
@@ -30,6 +31,13 @@ func main() {
 		log.Error().
 			Err(err).
 			Msg("failed to initialize virtualization")
+		return
+	}
+
+	if err := store.Initialize(); err != nil {
+		log.Error().
+			Err(err).
+			Msg("failed to initialize store")
 		return
 	}
 
