@@ -4,6 +4,8 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/andreaswachs/bachelors-project/daaukins/client/api"
 	"github.com/spf13/cobra"
 )
@@ -41,13 +43,12 @@ func frontends(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	cmd.Printf("HOST\t\tPORT\t\tSERVER\n")
+	printer.AddHeader("HOST", "PORT", "SERVER", "LINK")
 	for _, frontend := range response.Frontends {
-		cmd.Printf("%s\t%s\t\t%s\n",
-			frontend.Host,
+		printer.AddRow(frontend.Host,
 			frontend.Port,
 			frontend.ServerId,
-		)
+			fmt.Sprintf("https://%s:%s", frontend.Host, frontend.Port))
 	}
 }
 
@@ -59,30 +60,19 @@ func lab(cmd *cobra.Command, args []string) {
 	}
 
 	ppLabHeader(cmd)
-	cmd.Printf("%s\t%s\t%d\t\t%d\t%s\n",
-		response.Lab.Id,
-		response.Lab.Name,
-		response.Lab.NumChallenges,
-		response.Lab.NumUsers,
-		response.Lab.ServerId,
-	)
+	printer.AddRow(response.Lab.Id, response.Lab.Name, response.Lab.NumChallenges, response.Lab.NumUsers, response.Lab.ServerId)
 }
 
 func labs(cmd *cobra.Command, args []string) {
 	response, err := api.GetLabs(serverId)
 	if err != nil {
 		cmd.Println("There were an error when trying to get all labs: ")
+		return
 	}
 
 	ppLabHeader(cmd)
 	for _, lab := range response.Labs {
-		cmd.Printf("%s\t%s\t%d\t\t%d\t%s\n",
-			lab.Id,
-			lab.Name,
-			lab.NumChallenges,
-			lab.NumUsers,
-			lab.ServerId,
-		)
+		printer.AddRow(lab.Id, lab.Name, lab.NumChallenges, lab.NumUsers, lab.ServerId)
 	}
 }
 
@@ -90,22 +80,17 @@ func servers(cmd *cobra.Command, args []string) {
 	response, err := api.GetServers()
 	if err != nil {
 		cmd.Println("There were an error when trying to get all servers: ")
+		return
 	}
 
-	cmd.Printf("ID\t\tNAME\t\tMODE\tLABS\tCONNECTED\n")
+	printer.AddHeader("ID", "NAME", "MODE", "LABS", "CONNECTED")
 	for _, server := range response.Servers {
-		cmd.Printf("%s\t%s\t\t%s\t%d\t%t\n",
-			server.Id,
-			server.Name,
-			server.Mode,
-			server.NumLabs,
-			server.Connected,
-		)
+		printer.AddRow(server.Id, server.Name, server.Mode, server.NumLabs, server.Connected)
 	}
 }
 
 func ppLabHeader(cmd *cobra.Command) {
-	cmd.Printf("Id\t\t\t\tName\t\tChallenges\tUsers\tServerId\n")
+	printer.AddHeader("ID", "NAME", "CHALLENGES", "USERS", "SERVERID")
 }
 
 func init() {

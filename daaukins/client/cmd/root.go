@@ -9,11 +9,13 @@ import (
 
 	"github.com/andreaswachs/bachelors-project/daaukins/client/api"
 	"github.com/andreaswachs/bachelors-project/daaukins/client/config"
+	"github.com/andreaswachs/bachelors-project/daaukins/client/pp"
 	"github.com/spf13/cobra"
 )
 
 var (
 	FlagsForce bool
+	printer    pp.PrettyPrinter
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -52,8 +54,10 @@ func Execute() {
 	if err != nil {
 		os.Exit(1)
 	}
+	printer.Print()
 }
 
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&FlagsForce, "force", false, "Force initialization even if config file already exists")
+	printer = pp.NewPrettyPrinter()
 }
