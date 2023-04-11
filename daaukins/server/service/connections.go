@@ -26,16 +26,12 @@ type connAttempt struct {
 // ConnectFollowers attepmts to connect to all follower in the config
 func ConnectFollowers() ([]*follower, []*follower) {
 	connectedFollowerBuffer := make([]*follower, 0)
+	connectedFollowerBuffer = append(connectedFollowerBuffer, connectedFollowers...)
 	disconnectedFollowerBuffer := make([]*follower, 0)
 
 	attemps := make(chan connAttempt)
 
 	for _, follower := range disconnectedFollowers {
-		log.Debug().
-			Str("address", follower.config.Address).
-			Int("port", follower.config.Port).
-			Msg("Attempting to connect to follower")
-
 		go connect(follower, attemps)
 	}
 
@@ -61,14 +57,14 @@ func connect(f *follower, comm chan<- connAttempt) {
 	ctx, cancel := shortTimeoutContext()
 	defer cancel()
 
-	conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s:%d", f.config.Address, f.config.Port), grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s:%d", f.config.Address, f.config.Port), grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
+		log.Error().Err(err).Msgf("Failed to connect to follower %s:%d", f.config.Address, f.config.Port)
+
 		comm <- connAttempt{
 			follower: f,
 			result:   disconnected,
 		}
-
-		log.Error().Err(err).Msgf("Failed to connect to follower %s:%d", f.config.Address, f.config.Port)
 		return
 	}
 
@@ -78,6 +74,7 @@ func connect(f *follower, comm chan<- connAttempt) {
 	response, err := serviceClient.GetServerMode(context.Background(), &service.GetServerModeRequest{})
 	if err != nil {
 		log.Error().Err(err).Msgf("Failed to get server mode from follower %s:%d", f.config.Address, f.config.Port)
+
 		comm <- connAttempt{
 			follower: f,
 			result:   disconnected,
@@ -87,6 +84,7 @@ func connect(f *follower, comm chan<- connAttempt) {
 
 	if response.Mode == config.ModeLeader.String() {
 		log.Error().Msgf("Server %s:%d is a leader, but it should be a follower. The server will not be used.", f.config.Address, f.config.Port)
+
 		comm <- connAttempt{
 			follower: f,
 			result:   disconnected,

@@ -77,7 +77,8 @@ func Initialize() {
 		})
 	}
 
-	go updateFollowers()
+	go updateFollowers()         // Attempts to connect all disconnected followers
+	go probeConnectedFollowers() // Attempts to check if any connected followers have disconnected
 }
 
 func getConnectedFollowers() []*follower {
@@ -94,6 +95,48 @@ func getDisconnectedFollowers() []*follower {
 	return disconnectedFollowers
 }
 
+// https://stackoverflow.com/a/62287775
+func sleepContext(ctx context.Context, delay time.Duration) {
+	select {
+	case <-ctx.Done():
+	case <-time.After(delay):
+	}
+}
+
+func probeConnectedFollowers() {
+	for {
+		followersLock.Lock()
+		followersToMove := make(chan int)
+		ctx, cancel := shortTimeoutContext()
+
+		for i, f := range connectedFollowers {
+			go func(i int, f *follower, out chan<- int) {
+
+				// Ping, and only then move the follower to the disconnected list if it fails
+				_, err := f.client.Ping(ctx, &emptypb.Empty{})
+				if err != nil {
+					log.Warn().Err(err).Msgf("failed to ping follower %s", f.config.Name)
+					out <- i
+				}
+
+				cancel()
+			}(i, f, followersToMove)
+		}
+
+		sleepContext(ctx, 3*time.Second)
+
+		// Move all followers that failed to respond to the disconnected list
+		for len(followersToMove) > 0 {
+			i := <-followersToMove
+			disconnectedFollowers = append(disconnectedFollowers, connectedFollowers[i])
+			connectedFollowers = append(connectedFollowers[:i], connectedFollowers[i+1:]...)
+		}
+
+		followersLock.Unlock()
+		time.Sleep(5 * time.Second)
+	}
+}
+
 func updateFollowers() {
 	for {
 		followersLock.Lock()
@@ -108,7 +151,7 @@ func Stop() {
 	server.GracefulStop()
 }
 
-func (s *Server) HaveCapacity(context context.Context, request *service.HaveCapacityRequest) (*service.HaveCapacityResponse, error) {
+func (s *Server) HaveCapacity(ctx context.Context, request *service.HaveCapacityRequest) (*service.HaveCapacityResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		// If we're the leader, then we will query all follower and return true if a single follower has capacity
 
@@ -145,7 +188,10 @@ func (s *Server) HaveCapacity(context context.Context, request *service.HaveCapa
 			go func(m *follower) {
 				defer wg.Done()
 
-				response, err := m.client.HaveCapacity(context, request)
+				shortCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				defer cancel()
+
+				response, err := m.client.HaveCapacity(shortCtx, request)
 				if err != nil {
 					log.Error().Err(err).Msg("failed to ask follower for capacity")
 					return
@@ -197,9 +243,9 @@ func (s *Server) HaveCapacity(context context.Context, request *service.HaveCapa
 
 	// If we're a follower, then we will check if we have capacity and return that
 	log.Debug().Msg("Checking if we have capacity")
-	return HaveCapacity(context, request)
+	return HaveCapacity(ctx, request)
 }
-func (s *Server) ScheduleLab(context context.Context, request *service.ScheduleLabRequest) (*service.ScheduleLabResponse, error) {
+func (s *Server) ScheduleLab(ctx context.Context, request *service.ScheduleLabRequest) (*service.ScheduleLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		// Ask all follower what their capacity is and compare them including our own capacity.
 		// Schedule the lab on the follower with the most capacity (this instance included)
@@ -239,7 +285,10 @@ func (s *Server) ScheduleLab(context context.Context, request *service.ScheduleL
 			wg.Add(1)
 			go func(m *follower) {
 				defer wg.Done()
-				response, err := m.client.HaveCapacity(context, &service.HaveCapacityRequest{
+				shortCtx, cancel := shortTimeoutContext()
+				defer cancel()
+
+				response, err := m.client.HaveCapacity(shortCtx, &service.HaveCapacityRequest{
 					Lab: request.Lab,
 				})
 				if err != nil {
@@ -286,17 +335,17 @@ func (s *Server) ScheduleLab(context context.Context, request *service.ScheduleL
 
 		if bestFollower.isSelf {
 			log.Info().Msg("Scheduling lab on leader")
-			return ScheduleLab(context, request)
+			return ScheduleLab(ctx, request)
 		}
 
 		log.Info().Msgf("Scheduling lab on follower %s:%d", bestFollower.follower.config.Address, bestFollower.follower.config.Port)
-		return bestFollower.follower.client.ScheduleLab(context, request)
+		return bestFollower.follower.client.ScheduleLab(ctx, request)
 	}
 
 	// In this case, this server instance is a folloer and we'll just schedule the lab on ourself
-	return ScheduleLab(context, request)
+	return ScheduleLab(ctx, request)
 }
-func (s *Server) GetLab(context context.Context, request *service.GetLabRequest) (*service.GetLabResponse, error) {
+func (s *Server) GetLab(ctx context.Context, request *service.GetLabRequest) (*service.GetLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		wg := sync.WaitGroup{}
 		responses := make([]*askGetLabResponse, 0)
@@ -321,7 +370,10 @@ func (s *Server) GetLab(context context.Context, request *service.GetLabRequest)
 			wg.Add(1)
 			go func(m *follower) {
 				defer wg.Done()
-				response, err := m.client.GetLab(context, &service.GetLabRequest{
+				shortCtx, cancel := shortTimeoutContext()
+				defer cancel()
+
+				response, err := m.client.GetLab(shortCtx, &service.GetLabRequest{
 					Id: request.Id,
 				})
 				if err != nil {
@@ -367,16 +419,16 @@ func (s *Server) GetLab(context context.Context, request *service.GetLabRequest)
 		return theFollower.response, nil
 	}
 
-	return GetLab(context, request)
+	return GetLab(ctx, request)
 }
-func (s *Server) GetLabs(context context.Context, request *service.GetLabsRequest) (*service.GetLabsResponse, error) {
+func (s *Server) GetLabs(ctx context.Context, request *service.GetLabsRequest) (*service.GetLabsResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		wg := sync.WaitGroup{}
 		responses := make([]*service.GetLabsResponse, 0)
 		responseLock := sync.Mutex{}
 
 		// Get labs from ourselves
-		localLabs, err := GetLabs(context, request)
+		localLabs, err := GetLabs(ctx, request)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get labs from self")
 		}
@@ -391,7 +443,10 @@ func (s *Server) GetLabs(context context.Context, request *service.GetLabsReques
 			wg.Add(1)
 			go func(m *follower) {
 				defer wg.Done()
-				response, err := m.client.GetLabs(context, &service.GetLabsRequest{})
+				shortCtx, cancel := shortTimeoutContext()
+				defer cancel()
+
+				response, err := m.client.GetLabs(shortCtx, &service.GetLabsRequest{})
 				if err != nil {
 					log.Error().Err(err).Msgf("Failed to get labs from follower %s:%d", m.config.Address, m.config.Port)
 				}
@@ -427,10 +482,10 @@ func (s *Server) GetLabs(context context.Context, request *service.GetLabsReques
 		return response, nil
 	}
 
-	return GetLabs(context, request)
+	return GetLabs(ctx, request)
 }
 
-func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRequest) (*service.RemoveLabResponse, error) {
+func (s *Server) RemoveLab(ctx context.Context, request *service.RemoveLabRequest) (*service.RemoveLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		// Ask all follower for the given lab
 		// If we find it, remove it
@@ -459,7 +514,10 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 			wg.Add(1)
 			go func(m *follower) {
 				defer wg.Done()
-				response, err := m.client.GetLab(context, &service.GetLabRequest{
+				shortCtx, cancel := shortTimeoutContext()
+				defer cancel()
+
+				response, err := m.client.GetLab(shortCtx, &service.GetLabRequest{
 					Id: request.Id,
 				})
 				if err != nil {
@@ -493,7 +551,7 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 		}
 
 		// Remove the lab from the follower
-		_, err = theFollower.client.RemoveLab(context, &service.RemoveLabRequest{
+		_, err = theFollower.client.RemoveLab(ctx, &service.RemoveLabRequest{
 			Id: request.Id,
 		})
 		if err != nil {
@@ -504,7 +562,7 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 		return &service.RemoveLabResponse{Ok: true}, nil
 	}
 
-	return RemoveLab(context, request)
+	return RemoveLab(ctx, request)
 }
 
 func (s *Server) RemoveLabs(ctx context.Context, request *service.RemoveLabsRequest) (*service.RemoveLabsResponse, error) {
@@ -607,15 +665,23 @@ func (s *Server) GetServers(ctx context.Context, _ *emptypb.Empty) (*service.Get
 			defer numLabsWg.Done()
 			log.Debug().Msgf("GetServers(): Getting number of labs from follower %s:%d", f.config.Address, f.config.Port)
 
-			response, err := f.client.GetLabs(context.Background(), &service.GetLabsRequest{})
-			if err != nil {
-				log.Error().Err(err).Msgf("Failed to get number of labs from follower %s:%d", f.config.Address, f.config.Port)
-				return
-			}
-
 			var numLabs int32
-			if response != nil && response.GetLabs() != nil {
-				numLabs = int32(len(response.GetLabs()))
+
+			if isConnected {
+				shortCtx, cancel := shortTimeoutContext()
+				defer cancel()
+
+				response, err := f.client.GetLabs(shortCtx, &service.GetLabsRequest{})
+				if err != nil {
+					// The server is offline
+					log.Error().Err(err).Msgf("Failed to get number of labs from follower %s:%d", f.config.Address, f.config.Port)
+					isConnected = false
+				}
+
+				if response != nil && response.GetLabs() != nil {
+					numLabs = int32(len(response.GetLabs()))
+				}
+
 			}
 
 			serversSliceLock.Lock()
@@ -677,7 +743,11 @@ func (s *Server) GetFrontends(ctx context.Context, request *service.GetFrontends
 			wg.Add(1)
 			go func(f *follower) {
 				defer wg.Done()
-				response, err := f.client.GetFrontends(ctx, &service.GetFrontendsRequest{})
+
+				shortCtx, cancel := shortTimeoutContext()
+				defer cancel()
+
+				response, err := f.client.GetFrontends(shortCtx, &service.GetFrontendsRequest{})
 				if err != nil {
 					log.Error().
 						Err(err).
