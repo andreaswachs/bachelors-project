@@ -257,7 +257,7 @@ func (s *Server) GetLab(context context.Context, request *service.GetLabRequest)
 		responseLock := sync.Mutex{}
 
 		// Check if we have the lab
-		lab, _ := labs.GetById(request.Id)
+		lab, _ := labs.WithId(request.Id)
 		if lab != nil {
 			return &service.GetLabResponse{
 				Lab: &service.LabDescription{
@@ -395,7 +395,7 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 		responseLock := sync.Mutex{}
 
 		// Check if the lab is hosted on this server
-		lab, err := labs.GetById(request.Id)
+		lab, err := labs.WithId(request.Id)
 		if err == nil {
 			if lab != nil {
 				err = lab.Remove()
