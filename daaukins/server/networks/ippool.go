@@ -2,12 +2,13 @@ package networks
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"strconv"
 	"strings"
 
+	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -31,6 +32,24 @@ type IPPool struct {
 func ipPool() *IPPool {
 	if ipBank == nil {
 		ipBank = initIPPool()
+
+		if config.IsUsingDockerCompose() {
+			// Remove the subnet that is used by the docker-compose network
+			// Get the subnet from the docker-compose network
+			network, err := virtual.DockerClient().NetworkInfo("server_default")
+			if err != nil {
+				log.Error().Err(err).Msg("failed to get docker-compose network \"server_default\"")
+				return ipBank
+			}
+
+			subnet := network.IPAM.Config[0].Subnet
+			octets := strings.Split(subnet, ".")
+			for i := 0; i <= 255; i++ {
+				subnetToIgnore := fmt.Sprintf("%s.%s.%d.0/24", octets[0], octets[1], i)
+				ipBank.subnetsInUse[subnetToIgnore] = true
+			}
+
+		}
 	}
 
 	return ipBank
@@ -118,14 +137,14 @@ func getRandomOctet(leftmostOctet int) int {
 		// a random octet that will collide with the bridge network's second octet
 		bridgeNetwork, err := virtual.DockerClient().NetworkInfo("bridge")
 		if err != nil {
-			log.Panicf("failed to get bridge network info: %+v", err)
+			// log.Panicf("failed to get bridge network info: %+v", err)
 		}
 
 		bridgeSubnet := bridgeNetwork.IPAM.Config[0].Subnet
 		bridgeOctets := strings.Split(bridgeSubnet, ".")
 		secondOctet, err := strconv.Atoi(bridgeOctets[1])
 		if err != nil {
-			log.Panicf("failed to parse bridge network subnet: %+v", err)
+			// log.Panicf("failed to parse bridge network subnet: %+v", err)
 		}
 
 		for safety := 0; safety < 10000; safety++ {
@@ -135,7 +154,7 @@ func getRandomOctet(leftmostOctet int) int {
 			}
 		}
 
-		log.Panicf("failed to generate random octet that does not collide with bridge network")
+		// log.Panicf("failed to generate random octet that does not collide with bridge network")
 	case 10:
 		return rand.Intn(255)
 	}
