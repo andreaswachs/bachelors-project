@@ -465,6 +465,80 @@ func (s *Server) RemoveLab(context context.Context, request *service.RemoveLabRe
 	return RemoveLab(context, request)
 }
 
+func (s *Server) RemoveLabs(ctx context.Context, request *service.RemoveLabsRequest) (*service.RemoveLabsResponse, error) {
+	if config.GetServerMode() == config.ModeLeader {
+
+		if request.ServerId == "" {
+			// Remove all labs from all servers, including ourselves
+			wg := sync.WaitGroup{}
+
+			// Remove labs from ourselves
+			_, err := RemoveAllLabs(ctx, request)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to remove labs from self")
+			}
+
+			for _, connFollower := range connectedFollowers {
+				wg.Add(1)
+				go func(f *follower) {
+					defer wg.Done()
+					_, err := f.client.RemoveLabs(ctx, &service.RemoveLabsRequest{
+						ServerId: request.ServerId,
+					})
+					if err != nil {
+						log.Error().
+							Err(err).
+							Str("serverId", request.ServerId).
+							Msgf("Failed to remove labs from follower %s:%d", f.config.Address, f.config.Port)
+					}
+
+					log.Debug().
+						Str("serverId", request.ServerId).
+						Msgf("Removed labs from follower %s:%d", f.config.Address, f.config.Port)
+				}(connFollower)
+			}
+
+			wg.Wait()
+			return &service.RemoveLabsResponse{}, nil
+		}
+
+		// Remove all labs from a specific server
+		// If the serverId is our own, remove all labs from ourselves
+		if request.ServerId == config.GetServerID() {
+			_, err := RemoveAllLabs(ctx, request)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to remove labs from self")
+			}
+
+			return &service.RemoveLabsResponse{}, nil
+		}
+
+		// If the serverId is a follower, remove all labs from that follower
+		for _, connFollower := range connectedFollowers {
+			if connFollower.serverId == request.ServerId {
+				_, err := connFollower.client.RemoveLabs(ctx, &service.RemoveLabsRequest{
+					ServerId: request.ServerId,
+				})
+				if err != nil {
+					log.Error().
+						Err(err).
+						Str("serverId", request.ServerId).
+						Msgf("Failed to remove labs from follower %s:%d", connFollower.config.Address, connFollower.config.Port)
+				}
+
+				log.Debug().
+					Str("serverId", request.ServerId).
+					Msgf("Removed labs from follower %s:%d", connFollower.config.Address, connFollower.config.Port)
+				return &service.RemoveLabsResponse{}, nil
+			}
+		}
+	}
+
+	// If we receive the request and the server is a follower, then we send the request along to the implementation directly
+	// which has sufficient error handling
+	return RemoveAllLabs(ctx, request)
+}
+
 func (s *Server) GetServerMode(context context.Context, request *service.GetServerModeRequest) (*service.GetServerModeResponse, error) {
 	return &service.GetServerModeResponse{
 		Mode:     config.GetServerMode().String(),
