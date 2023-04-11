@@ -21,22 +21,31 @@ func ConnectFollowers() ([]*follower, []*follower) {
 	wg := sync.WaitGroup{}
 
 	for _, followerConfig := range config.GetFollowers() {
-		wg.Add(1)
+		log.Debug().
+			Str("address", followerConfig.Address).
+			Int("port", followerConfig.Port).
+			Msg("Attempting to connect to follower")
 
-		go func(m *config.FollowerConfig) {
+		wg.Add(1)
+		go func(f config.FollowerConfig) {
 			defer wg.Done()
 			followerBuffer := &follower{
-				config: *m,
+				config: f,
 			}
 
+			log.Debug().
+				Str("address", followerBuffer.config.Address).
+				Int("port", followerBuffer.config.Port).
+				Msg("Begin attempt to connect to follower")
+
 			// TODO: mTLS
-			conn, err := grpc.Dial(fmt.Sprintf("%s:%d", m.Address, m.Port), grpc.WithInsecure())
+			conn, err := grpc.Dial(fmt.Sprintf("%s:%d", f.Address, f.Port), grpc.WithInsecure())
 			if err != nil {
 				disconnectedFollowerBufferLock.Lock()
 				defer disconnectedFollowerBufferLock.Unlock()
 
 				disconnectedFollowerBuffer = append(disconnectedFollowerBuffer, followerBuffer)
-				log.Error().Err(err).Msgf("Failed to connect to follower %s:%d", m.Address, m.Port)
+				log.Error().Err(err).Msgf("Failed to connect to follower %s:%d", f.Address, f.Port)
 				return
 			}
 
@@ -45,11 +54,12 @@ func ConnectFollowers() ([]*follower, []*follower) {
 
 			response, err := serviceClient.GetServerMode(context.Background(), &service.GetServerModeRequest{})
 			if err != nil {
-				log.Error().Err(err).Msgf("Failed to get server mode from follower %s:%d", m.Address, m.Port)
+				log.Error().Err(err).Msgf("Failed to get server mode from follower %s:%d", f.Address, f.Port)
+				return
 			}
 
 			if response.Mode == config.ModeLeader.String() {
-				log.Error().Msgf("Server %s:%d is a leader, but it should be a follower. The server will not be used.", m.Address, m.Port)
+				log.Error().Msgf("Server %s:%d is a leader, but it should be a follower. The server will not be used.", f.Address, f.Port)
 				return
 			}
 
@@ -59,8 +69,8 @@ func ConnectFollowers() ([]*follower, []*follower) {
 			defer connectedFollowerBufferLock.Unlock()
 
 			connectedFollowerBuffer = append(connectedFollowerBuffer, followerBuffer)
-			log.Info().Msgf("Connected to follower %s:%d", m.Address, m.Port)
-		}(&followerConfig)
+			log.Info().Msgf("Connected to follower %s:%d", f.Address, f.Port)
+		}(followerConfig)
 	}
 
 	wg.Wait()
