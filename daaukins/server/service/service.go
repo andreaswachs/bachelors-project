@@ -563,27 +563,36 @@ func (s *Server) GetServers(ctx context.Context, _ *emptypb.Empty) (*service.Get
 
 		handler := func(f *follower, isConnected bool) {
 			defer numLabsWg.Done()
+			log.Debug().Msgf("GetServers(): Getting number of labs from follower %s:%d", f.config.Address, f.config.Port)
+
 			response, err := f.client.GetLabs(context.Background(), &service.GetLabsRequest{})
 			if err != nil {
 				log.Error().Err(err).Msgf("Failed to get number of labs from follower %s:%d", f.config.Address, f.config.Port)
 				return
 			}
 
-			if response == nil || response.GetLabs() == nil {
-				log.Error().Msg("Get labs response from follower was nil!")
-				return
+			var numLabs int32
+			if response != nil && response.GetLabs() != nil {
+				numLabs = int32(len(response.GetLabs()))
 			}
 
 			serversSliceLock.Lock()
 			defer serversSliceLock.Unlock()
 
-			servers = append(servers, &service.Server{
+			server := &service.Server{
 				Id:        f.serverId,
 				Mode:      "follower",
 				Name:      f.config.Name,
-				NumLabs:   int32(len(response.GetLabs())),
+				NumLabs:   numLabs,
 				Connected: isConnected,
-			})
+			}
+
+			log.Debug().
+				Str("serverId", f.serverId).
+				Str("name", f.config.Name).
+				Msgf("Adding follower %s:%d to servers list", f.config.Address, f.config.Port)
+
+			servers = append(servers, server)
 		}
 
 		// Add connected
