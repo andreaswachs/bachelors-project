@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	service "github.com/andreaswachs/daaukins-service"
 	"google.golang.org/grpc"
@@ -35,7 +34,7 @@ func Initialize(address, port string) error {
 }
 
 func newCtx() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), 10*time.Second)
+	return context.Background(), func() {}
 }
 
 func getClient() service.ServiceClient {
