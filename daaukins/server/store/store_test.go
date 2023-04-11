@@ -1,12 +1,39 @@
 package store
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 )
 
-const ()
+var (
+	configContests = `challenges:
+- name: Free Flag
+  id: free_flag
+  image: andreaswachs/placeholder_vuln_server
+  memory: 50`
+	testConfigFilename string
+)
+
+type testStoreConf struct{}
+
+func (t testStoreConf) storeConfigFile() string {
+	return testConfigFilename
+}
+
+func AddInstrumentation(t *testing.T, s string) string {
+	f, err := os.CreateTemp("", "store.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := f.WriteString(s); err != nil {
+		t.Fatal(err)
+	}
+
+	stConf = testStoreConf{}
+
+	return f.Name()
+}
 
 func TestLoadStore(t *testing.T) {
 	yamlConf := []byte(`challenges:
@@ -95,6 +122,15 @@ func TestLoadStoreBadYaml(t *testing.T) {
 }
 
 func TestTransferChallenges(t *testing.T) {
+	file := AddInstrumentation(t, "")
+	defer os.Remove(file)
+
+	testConfigFilename = file
+
+	if err := Initialize(); err != nil {
+		t.Errorf("unexpected error: %s", err)
+	}
+
 	dto := &storeDTO{
 		Challenges: []ChallengeTemplate{
 			{
@@ -131,16 +167,16 @@ func TestTransferChallenges(t *testing.T) {
 		{
 			name: "should transfer challenge1",
 			predicate: func(t *testing.T, s *Store) {
-				if s.challenges["challenge1"].Name != "challenge1" {
+				if s.challenges["id1"].Name != "challenge1" {
 					t.Errorf("expected challenge1, got %s", s.challenges["challenge1"].Name)
 				}
-				if s.challenges["challenge1"].Id != "id1" {
+				if s.challenges["id1"].Id != "id1" {
 					t.Errorf("expected id1, got %s", s.challenges["challenge1"].Id)
 				}
-				if s.challenges["challenge1"].Image != "image1" {
+				if s.challenges["id1"].Image != "image1" {
 					t.Errorf("expected image1, got %s", s.challenges["challenge1"].Image)
 				}
-				if s.challenges["challenge1"].Memory != 100 {
+				if s.challenges["id1"].Memory != 100 {
 					t.Errorf("expected 100, got %d", s.challenges["challenge1"].Memory)
 				}
 			},
@@ -148,16 +184,16 @@ func TestTransferChallenges(t *testing.T) {
 		{
 			name: "should transfer challenge2",
 			predicate: func(t *testing.T, s *Store) {
-				if s.challenges["challenge2"].Name != "challenge2" {
+				if s.challenges["id2"].Name != "challenge2" {
 					t.Errorf("expected challenge2, got %s", s.challenges["challenge2"].Name)
 				}
-				if s.challenges["challenge2"].Id != "id2" {
+				if s.challenges["id2"].Id != "id2" {
 					t.Errorf("expected id2, got %s", s.challenges["challenge2"].Id)
 				}
-				if s.challenges["challenge2"].Image != "image2" {
+				if s.challenges["id2"].Image != "image2" {
 					t.Errorf("expected image2, got %s", s.challenges["challenge2"].Image)
 				}
-				if s.challenges["challenge2"].Memory != 200 {
+				if s.challenges["id2"].Memory != 200 {
 					t.Errorf("expected 200, got %d", s.challenges["challenge2"].Memory)
 				}
 			},
@@ -171,9 +207,26 @@ func TestTransferChallenges(t *testing.T) {
 	}
 }
 
-func TestInit(t *testing.T) {
+func TestInitialize(t *testing.T) {
+	f := AddInstrumentation(t, configContests)
+	defer os.Remove(f)
+
+	testConfigFilename = f
+
+	if err := Initialize(); err != nil {
+		t.Errorf("unexpected error: %s", err)
+	}
+
 	if store.challenges == nil {
 		t.Error("challenges should not be nil")
+	}
+}
+
+func TestInitializeBadLoad(t *testing.T) {
+	testConfigFilename = "/bad/path"
+
+	if err := Initialize(); err == nil {
+		t.Error("expected error, got nil")
 	}
 }
 
@@ -314,77 +367,20 @@ func TestChallengeExists(t *testing.T) {
 	}
 }
 
-func TestLoad(t *testing.T) {
-	// Write YAML config to file on disk
-	data := []byte(`
-challenges:
-  - name: challenge1
-    id: id1
-    image: image1
-    memory: 100
-  - name: challenge2
-    id: id2
-    image: image2
-    memory: 200
-`)
-
-	tmpfile, err := ioutil.TempFile("", "test_store_config.yaml")
-	if err != nil {
-		t.Fatal(err)
+func TestGetChallengesDoesNotExist(t *testing.T) {
+	store = &Store{
+		challenges: map[string]ChallengeTemplate{},
 	}
 
-	defer os.Remove(tmpfile.Name())
-
-	if _, err := tmpfile.Write(data); err != nil {
-		t.Fatal(err)
+	_, err := GetChallenge("challenge1")
+	if err == nil {
+		t.Error("expected error, got nil")
 	}
+}
 
-	if err := tmpfile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := load(tmpfile.Name()); err != nil {
-		t.Errorf("unexpected error: %s", err)
-	}
-
-	if store.challenges == nil {
-		t.Error("challenges should not be nil")
-	}
-
-	if len(store.challenges) != 2 {
-		t.Errorf("expected 2 challenges, got %d", len(store.challenges))
-	}
-
-	if store.challenges["challenge1"].Name != "challenge1" {
-		t.Errorf("expected challenge1, got %s", store.challenges["challenge1"].Name)
-	}
-
-	if store.challenges["challenge1"].Id != "id1" {
-		t.Errorf("expected id1, got %s", store.challenges["challenge1"].Id)
-	}
-
-	if store.challenges["challenge1"].Image != "image1" {
-		t.Errorf("expected image1, got %s", store.challenges["challenge1"].Image)
-	}
-
-	if store.challenges["challenge1"].Memory != 100 {
-		t.Errorf("expected 100, got %d", store.challenges["challenge1"].Memory)
-	}
-
-	if store.challenges["challenge2"].Name != "challenge2" {
-		t.Errorf("expected challenge2, got %s", store.challenges["challenge2"].Name)
-	}
-
-	if store.challenges["challenge2"].Id != "id2" {
-		t.Errorf("expected id2, got %s", store.challenges["challenge2"].Id)
-	}
-
-	if store.challenges["challenge2"].Image != "image2" {
-		t.Errorf("expected image2, got %s", store.challenges["challenge2"].Image)
-	}
-
-	if store.challenges["challenge2"].Memory != 200 {
-		t.Errorf("expected 200, got %d", store.challenges["challenge2"].Memory)
+func TestLoadMissingFile(t *testing.T) {
+	if err := load("missing.yaml"); err == nil {
+		t.Error("expected error, got nil")
 	}
 }
 
@@ -394,7 +390,7 @@ func TestLoadInvalidConfig(t *testing.T) {
 challenges:
   - name: challenge1
 `)
-	tmpfile, err := ioutil.TempFile("", "test_store_config.yaml")
+	tmpfile, err := os.CreateTemp("", "test_store_config.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -410,6 +406,18 @@ challenges:
 	}
 
 	if err := load(tmpfile.Name()); err == nil {
+		t.Error("expected error, got nil")
+	}
+}
+
+func TestLoadInvalidYaml(t *testing.T) {
+	// Write YAML config to file on disk
+	f := AddInstrumentation(t, "fuiawuef")
+	defer os.Remove(f)
+
+	testConfigFilename = f
+
+	if err := load(f); err == nil {
 		t.Error("expected error, got nil")
 	}
 }
@@ -471,6 +479,23 @@ func TestValidateStoreDTOWithNoMemoryChallenge(t *testing.T) {
 
 	dto := &storeDTO{
 		Challenges: []ChallengeTemplate{badTemplateNoMemory},
+	}
+
+	if err := validateStoreDTO(dto); err == nil {
+		t.Error("expected error, got nil")
+	}
+}
+
+func TestValidateStoreDTOWithNegativememoryChallenge(t *testing.T) {
+	badTemplateNegativeMemory := ChallengeTemplate{
+		Name:   "challenge1",
+		Id:     "id1",
+		Image:  "image1",
+		Memory: -1,
+	}
+
+	dto := &storeDTO{
+		Challenges: []ChallengeTemplate{badTemplateNegativeMemory},
 	}
 
 	if err := validateStoreDTO(dto); err == nil {
