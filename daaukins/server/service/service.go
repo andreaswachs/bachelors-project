@@ -21,7 +21,7 @@ import (
 var (
 	connectedFollowers    []*follower
 	disconnectedFollowers []*follower
-	followersLock         *sync.Mutex
+	followersLock         = &sync.Mutex{}
 
 	server *grpc.Server
 	port   int
