@@ -2,10 +2,11 @@ package service
 
 import (
 	context "context"
+	"fmt"
 	"os"
-	"sync"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
+	"github.com/andreaswachs/bachelors-project/daaukins/server/frontend"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/labs"
 	service "github.com/andreaswachs/daaukins-service"
 	"github.com/rs/zerolog/log"
@@ -139,38 +140,44 @@ func RemoveLab(context context.Context, request *service.RemoveLabRequest) (*ser
 
 func RemoveAllLabs(ctx context.Context, request *service.RemoveLabsRequest) (*service.RemoveLabsResponse, error) {
 	// If the server ID is not empty (empty meaning that we want to remove labs from all servers) and it is not equal to this server's ID, return an error
-	if request.ServerId != "" || request.ServerId != config.GetServerID() {
+	if request.ServerId != "" && request.ServerId != config.GetServerID() {
+		log.Error().
+			Str("requested server id", request.ServerId).
+			Str("serverID", config.GetServerID()).
+			Msg("RemoveAllLabs: ServerID was neither empty nor equal to this server's ID")
+
 		return &service.RemoveLabsResponse{}, status.Errorf(codes.InvalidArgument, "ServerID was neither empty nor equal to this server's ID")
 	}
 
-	// Asynchronoise removal of all labs, capture any errors
-	wg := sync.WaitGroup{}
-	errors := make(chan error, len(labs.All()))
-
-	for _, lab := range labs.All() {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			if err := lab.Remove(); err != nil {
-				errors <- err
-			}
-		}()
-	}
-	wg.Wait()
-
-	if len(errors) > 0 {
-		// Empty the channel into an error slice
-		errs := make([]error, len(errors))
-		for i := 0; i < len(errors); i++ {
-			errs[i] = <-errors
-		}
-
-		return &service.RemoveLabsResponse{}, status.Errorf(codes.Internal, "failed to remove all labs: %+v", errs)
+	err := labs.RemoveAll()
+	if err != nil {
+		return &service.RemoveLabsResponse{}, status.Errorf(codes.Internal, "failed to remove all labs: %v", err)
 	}
 
 	return &service.RemoveLabsResponse{
 		Ok: true,
+	}, nil
+}
+
+func GetFrontends(ctx context.Context, request *service.GetFrontendsRequest) (*service.GetFrontendsResponse, error) {
+	frontends := make([]frontend.T, 0)
+	for _, lab := range labs.All() {
+		frontends = append(frontends, lab.GetFrontend())
+	}
+
+	log.Debug().Int("numFrontends", len(frontends)).Msg("GetFrontends")
+
+	frontendsResponse := make([]*service.Frontend, len(frontends))
+	for i, frontend := range frontends {
+		frontendsResponse[i] = &service.Frontend{
+			Port:     fmt.Sprint(frontend.GetProxyPort()),
+			Host:     "replace-me",
+			ServerId: config.GetServerID(),
+		}
+	}
+
+	return &service.GetFrontendsResponse{
+		Frontends: frontendsResponse,
 	}, nil
 }
 
