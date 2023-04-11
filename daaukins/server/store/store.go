@@ -68,11 +68,13 @@ func Initialize() error {
 }
 
 func GetChallenge(name string) (ChallengeTemplate, error) {
-	if _, ok := store.challenges[name]; !ok {
-		return ChallengeTemplate{}, fmt.Errorf("%w: %s", ErrorChallengeNotFound, name)
+	for _, c := range store.challenges {
+		if c.Name == name {
+			return c, nil
+		}
 	}
 
-	return store.challenges[name], nil
+	return ChallengeTemplate{}, fmt.Errorf("%w: %s", ErrorChallengeNotFound, name)
 }
 
 func ChallengeExists(name string) bool {
@@ -104,6 +106,10 @@ func transferChallenges(dto *storeDTO) {
 		go func(c ChallengeTemplate) {
 			defer wg.Done()
 
+			if flag.Lookup("test.v") != nil {
+				return
+			}
+
 			images, err := virtual.DockerClient().ListImages(docker.ListImagesOptions{All: true})
 			if err != nil {
 				log.Err(err).Msg("failed to list images on the server")
@@ -117,10 +123,6 @@ func transferChallenges(dto *storeDTO) {
 						return
 					}
 				}
-			}
-
-			if flag.Lookup("test.v") != nil {
-				return
 			}
 
 			err = virtual.DockerClient().PullImage(docker.PullImageOptions{
