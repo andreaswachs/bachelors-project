@@ -25,14 +25,16 @@ Action:
 	Args:      cobra.OnlyValidArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) > 0 {
+			printer.AddHeader("KEY", "VALUE")
 			switch args[0] {
 			case "show":
-				cmd.Println("Config file at", config.DknConfigFile())
-				cmd.Printf("Server address: %s\n", config.ServerAddress())
-				cmd.Printf("Server port: %s\n", config.ServerPort())
+				printer.AddRow("CONFIG FILE PATH", config.DknConfigFile())
+				printer.AddRow("SERVER ADDRESS", config.ServerAddress())
+				printer.AddRow("SERVER PORT", config.ServerPort())
 			case "path":
-				cmd.Println(config.DknConfigFile())
-			case "init":
+				printer.AddHeader("KEY", "VALUE")
+				printer.AddRow("CONFIG FILE PATH", config.DknConfigFile())
+			default:
 			}
 		}
 	},
