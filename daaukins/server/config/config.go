@@ -83,6 +83,10 @@ func GetDockerConfig() DockerConfig {
 	return config.Docker
 }
 
+func IsUsingDockerCompose() bool {
+	return os.Getenv("DOCKER_COMPOSE") != ""
+}
+
 func load(file string) (Config, error) {
 	content, err := os.ReadFile(file)
 	if err != nil {
