@@ -11,41 +11,41 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-// ConnectMinions attepmts to connect to all minions in the config
-func ConnectMinions() ([]*minion, []*minion) {
-	connectedMinionBuffer := make([]*minion, 0)
-	disconnectedMinionBuffer := make([]*minion, 0)
+// ConnectFollowers attepmts to connect to all follower in the config
+func ConnectFollowers() ([]*follower, []*follower) {
+	connectedFollowerBuffer := make([]*follower, 0)
+	disconnectedFollowerBuffer := make([]*follower, 0)
 
-	connectedMinionBufferLock := sync.Mutex{}
-	disconnectedMinionBufferLock := sync.Mutex{}
+	connectedFollowerBufferLock := sync.Mutex{}
+	disconnectedFollowerBufferLock := sync.Mutex{}
 	wg := sync.WaitGroup{}
 
-	for _, minionConfig := range config.GetMinions() {
+	for _, followerConfig := range config.GetFollowers() {
 		wg.Add(1)
 
-		go func(m *config.MinionConfig) {
+		go func(m *config.FollowerConfig) {
 			defer wg.Done()
-			minionBuffer := &minion{
+			followerBuffer := &follower{
 				config: *m,
 			}
 
 			// TODO: mTLS
 			conn, err := grpc.Dial(fmt.Sprintf("%s:%d", m.Address, m.Port), grpc.WithInsecure())
 			if err != nil {
-				disconnectedMinionBufferLock.Lock()
-				defer disconnectedMinionBufferLock.Unlock()
+				disconnectedFollowerBufferLock.Lock()
+				defer disconnectedFollowerBufferLock.Unlock()
 
-				disconnectedMinionBuffer = append(disconnectedMinionBuffer, minionBuffer)
-				log.Error().Err(err).Msgf("Failed to connect to minion %s:%d", m.Address, m.Port)
+				disconnectedFollowerBuffer = append(disconnectedFollowerBuffer, followerBuffer)
+				log.Error().Err(err).Msgf("Failed to connect to follower %s:%d", m.Address, m.Port)
 				return
 			}
 
 			serviceClient := service.NewServiceClient(conn)
-			minionBuffer.client = serviceClient
+			followerBuffer.client = serviceClient
 
 			response, err := serviceClient.GetServerMode(context.Background(), &service.GetServerModeRequest{})
 			if err != nil {
-				log.Error().Err(err).Msgf("Failed to get server mode from minion %s:%d", m.Address, m.Port)
+				log.Error().Err(err).Msgf("Failed to get server mode from follower %s:%d", m.Address, m.Port)
 			}
 
 			if response.Mode == config.ModeLeader.String() {
@@ -53,15 +53,15 @@ func ConnectMinions() ([]*minion, []*minion) {
 				return
 			}
 
-			connectedMinionBufferLock.Lock()
-			defer connectedMinionBufferLock.Unlock()
+			connectedFollowerBufferLock.Lock()
+			defer connectedFollowerBufferLock.Unlock()
 
-			connectedMinionBuffer = append(connectedMinionBuffer, minionBuffer)
-			log.Info().Msgf("Connected to minion %s:%d", m.Address, m.Port)
-		}(&minionConfig)
+			connectedFollowerBuffer = append(connectedFollowerBuffer, followerBuffer)
+			log.Info().Msgf("Connected to follower %s:%d", m.Address, m.Port)
+		}(&followerConfig)
 	}
 
 	wg.Wait()
 
-	return connectedMinionBuffer, disconnectedMinionBuffer
+	return connectedFollowerBuffer, disconnectedFollowerBuffer
 }
