@@ -137,11 +137,13 @@ func RemoveLab(context context.Context, request *service.RemoveLabRequest) (*ser
 	}, nil
 }
 
-func RemoveAllLabs(ctx context.Context, request *service.RemoveLabRequest) (*service.RemoveLabResponse, error) {
+func RemoveAllLabs(ctx context.Context, request *service.RemoveLabsRequest) (*service.RemoveLabsResponse, error) {
+	// If the server ID is not empty (empty meaning that we want to remove labs from all servers) and it is not equal to this server's ID, return an error
 	if request.ServerId != "" || request.ServerId != config.GetServerID() {
-		return &service.RemoveLabResponse{}, status.Errorf(codes.InvalidArgument, "ServerID was neither empty nor equal to this server's ID")
+		return &service.RemoveLabsResponse{}, status.Errorf(codes.InvalidArgument, "ServerID was neither empty nor equal to this server's ID")
 	}
 
+	// Asynchronoise removal of all labs, capture any errors
 	wg := sync.WaitGroup{}
 	errors := make(chan error, len(labs.All()))
 
@@ -164,10 +166,10 @@ func RemoveAllLabs(ctx context.Context, request *service.RemoveLabRequest) (*ser
 			errs[i] = <-errors
 		}
 
-		return &service.RemoveLabResponse{}, status.Errorf(codes.Internal, "failed to remove all labs: %+v", errs)
+		return &service.RemoveLabsResponse{}, status.Errorf(codes.Internal, "failed to remove all labs: %+v", errs)
 	}
 
-	return &service.RemoveLabResponse{
+	return &service.RemoveLabsResponse{
 		Ok: true,
 	}, nil
 }
