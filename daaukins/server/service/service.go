@@ -237,13 +237,20 @@ func (s *Server) ScheduleLab(context context.Context, request *service.ScheduleL
 		// Find the follower with the most capacity
 		bestFollower := responses[0]
 		for _, r := range responses {
+			if request.ServerId != "" {
+				if r.follower.serverId == request.ServerId {
+					bestFollower = r
+					break
+				}
+			}
+
 			if r.response.Capacity > bestFollower.response.Capacity {
 				bestFollower = r
 			}
 		}
 
 		if bestFollower.isSelf {
-			log.Info().Msg("Scheduling lab on self")
+			log.Info().Msg("Scheduling lab on leader")
 			return ScheduleLab(context, request)
 		}
 
