@@ -67,26 +67,6 @@ func Initialize() error {
 	return nil
 }
 
-func load(path string) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	dto, err := loadStore(data)
-	if err != nil {
-		return err
-	}
-
-	if err = validateStoreDTO(dto); err != nil {
-		return err
-	}
-
-	transferChallenges(dto)
-
-	return nil
-}
-
 func GetChallenge(name string) (ChallengeTemplate, error) {
 	if _, ok := store.challenges[name]; !ok {
 		return ChallengeTemplate{}, fmt.Errorf("%w: %s", ErrorChallengeNotFound, name)
@@ -179,6 +159,26 @@ func validateStoreDTO(dto *storeDTO) error {
 			return ErrorChallengeNegativeMemory
 		}
 	}
+
+	return nil
+}
+
+func load(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	dto, err := loadStore(data)
+	if err != nil {
+		return err
+	}
+
+	if err = validateStoreDTO(dto); err != nil {
+		return err
+	}
+
+	transferChallenges(dto)
 
 	return nil
 }
