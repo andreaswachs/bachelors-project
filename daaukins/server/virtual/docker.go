@@ -3,8 +3,6 @@
 package virtual
 
 import (
-	"log"
-
 	docker "github.com/fsouza/go-dockerclient"
 )
 
@@ -12,12 +10,14 @@ var (
 	client *docker.Client
 )
 
-func init() {
+func Initialize() error {
 	var err error
 	client, err = docker.NewClientFromEnv()
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
+
+	return nil
 }
 
 func DockerClient() *docker.Client {
