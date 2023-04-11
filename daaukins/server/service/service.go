@@ -773,3 +773,7 @@ func (s *Server) GetFrontends(ctx context.Context, request *service.GetFrontends
 
 	return GetFrontends(ctx, request)
 }
+
+func (s *Server) Ping(ctx context.Context, empty *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
