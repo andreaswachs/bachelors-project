@@ -30,7 +30,7 @@ var scheduleCmd = &cobra.Command{
 
 		labConfig := getLabsFileContent()
 
-		response, err := api.ScheduleLab(labConfig)
+		response, err := api.ScheduleLab(labConfig, serverId)
 		if err != nil {
 			fmt.Println("Error scheduling lab:", err)
 			os.Exit(1)
@@ -86,5 +86,6 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	scheduleCmd.Flags().StringVar(&file, "file", "", "Specify the lab configuration file")
+	scheduleCmd.Flags().StringVarP(&file, "file", "f", "", "Specify the lab configuration file")
+	scheduleCmd.Flags().StringVarP(&serverId, "serverid", "s", "", "Specify the server to schedule the lab on")
 }
