@@ -60,14 +60,14 @@ func Initialize() error {
 		challenges: make(map[string]ChallengeTemplate),
 	}
 
-	if err := Load(stConf.storeConfigFile()); err != nil {
+	if err := load(stConf.storeConfigFile()); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func Load(path string) error {
+func load(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err

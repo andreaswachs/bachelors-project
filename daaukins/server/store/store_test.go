@@ -343,7 +343,7 @@ challenges:
 		t.Fatal(err)
 	}
 
-	if err := Load(tmpfile.Name()); err != nil {
+	if err := load(tmpfile.Name()); err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
 
@@ -409,7 +409,7 @@ challenges:
 		t.Fatal(err)
 	}
 
-	if err := Load(tmpfile.Name()); err == nil {
+	if err := load(tmpfile.Name()); err == nil {
 		t.Error("expected error, got nil")
 	}
 }
