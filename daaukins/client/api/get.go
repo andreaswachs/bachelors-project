@@ -8,28 +8,28 @@ import (
 
 func GetLabs(serverId string) (*service.GetLabsResponse, error) {
 	// if id is "", then all getting all labs is implied
-	ctx, cancelFunc := newCtx()
+	ctx, cancelFunc := shortLivedCtx()
 	defer cancelFunc()
 
 	return getClient().GetLabs(ctx, &service.GetLabsRequest{})
 }
 
 func GetLab(id string) (*service.GetLabResponse, error) {
-	ctx, cancelFunc := newCtx()
+	ctx, cancelFunc := shortLivedCtx()
 	defer cancelFunc()
 
 	return getClient().GetLab(ctx, &service.GetLabRequest{Id: id})
 }
 
 func GetServers() (*service.GetServersResponse, error) {
-	ctx, cancelFunc := newCtx()
+	ctx, cancelFunc := shortLivedCtx()
 	defer cancelFunc()
 
 	return getClient().GetServers(ctx, &emptypb.Empty{})
 }
 
 func GetFrontends() (*service.GetFrontendsResponse, error) {
-	ctx, cancelFunc := newCtx()
+	ctx, cancelFunc := shortLivedCtx()
 	defer cancelFunc()
 
 	response, err := getClient().GetFrontends(ctx, &service.GetFrontendsRequest{})

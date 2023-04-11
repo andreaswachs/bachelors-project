@@ -34,8 +34,12 @@ func Initialize(address, port string) error {
 	return nil
 }
 
-func newCtx() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), 10*time.Second)
+func shortLivedCtx() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 5*time.Second)
+}
+
+func longLivedCtx() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 60*time.Second)
 }
 
 func getClient() service.ServiceClient {
@@ -49,7 +53,7 @@ func getClient() service.ServiceClient {
 }
 
 func connect(address, ip string) (*grpc.ClientConn, error) {
-	ctx, cancelFunc := newCtx()
+	ctx, cancelFunc := shortLivedCtx()
 	defer cancelFunc()
 
 	return grpc.DialContext(ctx, fmt.Sprintf("%s:%s", address, ip),
