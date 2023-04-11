@@ -48,7 +48,7 @@ func frontends(cmd *cobra.Command, args []string) {
 		printer.AddRow(frontend.Host,
 			frontend.Port,
 			frontend.ServerId,
-			fmt.Sprintf("https://%s:%s", frontend.Host, frontend.Port))
+			fmt.Sprintf("https://%s:%s/vnc.html", frontend.Host, frontend.Port))
 	}
 }
 
