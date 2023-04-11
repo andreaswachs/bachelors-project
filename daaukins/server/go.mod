@@ -3,7 +3,7 @@ module github.com/andreaswachs/bachelors-project/daaukins/server
 go 1.20
 
 require (
-	github.com/andreaswachs/daaukins-service v0.1.4
+	github.com/andreaswachs/daaukins-service v0.2.0
 	github.com/andreaswachs/sizes v0.3.0
 	github.com/fsouza/go-dockerclient v1.9.7
 	github.com/google/uuid v1.3.0
@@ -39,6 +39,6 @@ require (
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/tools v0.8.0 // indirect
-	google.golang.org/genproto v0.0.0-20230403163135-c38d8f061ccd // indirect
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
 )

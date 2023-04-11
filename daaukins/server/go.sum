@@ -12,6 +12,8 @@ github.com/andreaswachs/daaukins-service v0.1.3 h1:7LYQfptQcn2CxgVG1MZ5xf0lTMBnS
 github.com/andreaswachs/daaukins-service v0.1.3/go.mod h1:/pQLycFO2XFcQQ18uEKECfPr9SN4K8FtKsJp111NWgY=
 github.com/andreaswachs/daaukins-service v0.1.4 h1:rdcPUuy1tun01gNVY7XKR8O0MDfZFa4poFo17+vXsb8=
 github.com/andreaswachs/daaukins-service v0.1.4/go.mod h1:/pQLycFO2XFcQQ18uEKECfPr9SN4K8FtKsJp111NWgY=
+github.com/andreaswachs/daaukins-service v0.2.0 h1:rB+3UoQATYT3INEXnia+OEVOBjCgoDnS+MoaUZvxDSA=
+github.com/andreaswachs/daaukins-service v0.2.0/go.mod h1:/pQLycFO2XFcQQ18uEKECfPr9SN4K8FtKsJp111NWgY=
 github.com/andreaswachs/sizes v0.3.0 h1:yJYHokX4bU0a7EzB9Q9jfcmuF+Zf0WCgoW+dxxU4vwU=
 github.com/andreaswachs/sizes v0.3.0/go.mod h1:zbJx4l9RYiGg4DRkcPj685G0NpfedGF9ZyrgqV8uo0M=
 github.com/checkpoint-restore/go-criu/v5 v5.3.0/go.mod h1:E/eQpaFtUKGOOSEBZgmKAcn+zUUwWxqcaKZlF54wK8E=
@@ -178,6 +180,8 @@ google.golang.org/genproto v0.0.0-20230331144136-dcfb400f0633 h1:0BOZf6qNozI3pkN
 google.golang.org/genproto v0.0.0-20230331144136-dcfb400f0633/go.mod h1:UUQDJDOlWu4KYeJZffbWgBkS1YFobzKbLVfK69pe0Ak=
 google.golang.org/genproto v0.0.0-20230403163135-c38d8f061ccd h1:sLpv7bNL1AsX3fdnWh9WVh7ejIzXdOc1RRHGeAmeStU=
 google.golang.org/genproto v0.0.0-20230403163135-c38d8f061ccd/go.mod h1:UUQDJDOlWu4KYeJZffbWgBkS1YFobzKbLVfK69pe0Ak=
+google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 h1:KpwkzHKEF7B9Zxg18WzOa7djJ+Ha5DzthMyZYQfEn2A=
+google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1/go.mod h1:nKE/iIaLqn2bQwXBg8f1g2Ylh6r5MN5CmZvuzZCgsCU=
 google.golang.org/grpc v1.54.0 h1:EhTqbhiYeixwWQtAEZAxmV9MGqcjEU2mFx52xCzNyag=
 google.golang.org/grpc v1.54.0/go.mod h1:PUSEXI6iWghWaB6lXM4knEgpJNu2qUcKfDtNci3EC2g=
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
