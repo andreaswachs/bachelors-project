@@ -7,6 +7,13 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 )
 
+func init() {
+	// Initialize the docker client
+	if err := virtual.Initialize(); err != nil {
+		panic(err)
+	}
+}
+
 func TestProvisionChallengeCanProvisionChallenge(t *testing.T) {
 	configuration := &ProvisionChallengeOptions{
 		Image: "alpine",
