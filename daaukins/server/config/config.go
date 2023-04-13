@@ -7,14 +7,13 @@ import (
 	"os"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
-	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 )
 
 var (
 	config      Config
 	serverId    string
-	confOptsObj configOptions = &defaultConfigOptions{}
+	confOptsObj Configure = &defaultConfigOptions{}
 )
 
 type FollowerConfig struct {
@@ -40,15 +39,15 @@ type Config struct {
 	Followers   []FollowerConfig `yaml:"followers"`
 }
 
-type configOptions interface {
-	getConfigFilename() string
-	isUsingDockerCompose() bool
-	newServerID() string
+type Configure interface {
+	GetConfigFilename() string
+	UsingDockerCompose() bool
+	NewServerID() string
 }
 
 type defaultConfigOptions struct{}
 
-func (d *defaultConfigOptions) getConfigFilename() string {
+func (d *defaultConfigOptions) GetConfigFilename() string {
 	filename := os.Getenv("DAAUKINS_SERVER_CONFIG")
 	if filename == "" {
 		return "server.yaml"
@@ -57,11 +56,11 @@ func (d *defaultConfigOptions) getConfigFilename() string {
 	return filename
 }
 
-func (d *defaultConfigOptions) isUsingDockerCompose() bool {
+func (d *defaultConfigOptions) UsingDockerCompose() bool {
 	return os.Getenv("DAAUKINS_USING_DOCKER_COMPOSE") != ""
 }
 
-func (d *defaultConfigOptions) newServerID() string {
+func (d *defaultConfigOptions) NewServerID() string {
 	return utils.RandomShortName()
 }
 
@@ -69,23 +68,24 @@ type InitializeConfigOptions struct {
 	ConfigFile string
 }
 
+// InitializeWith initializes the config with the given configurer.This uses the dependency injection pattern, in that users can provide their own configurer to load the config from a different source.
+func InitializeWith(configurer Configure) error {
+	confOptsObj = configurer
+	return Initialize()
+}
+
 func Initialize() error {
 	// Load the configuration from the config file
-	configBuffer, err := load(confOptsObj.getConfigFilename())
+	configBuffer, err := load(confOptsObj.GetConfigFilename())
 	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("Failed to load config file")
-
 		return err
 	}
 
 	config = configBuffer
 
 	// Set the server id
-	serverId = confOptsObj.newServerID()
+	serverId = confOptsObj.NewServerID()
 
-	log.Info().Msgf("Loaded config: %+v", config)
 	return nil
 }
 
@@ -110,7 +110,7 @@ func GetDockerConfig() DockerConfig {
 }
 
 func IsUsingDockerCompose() bool {
-	return confOptsObj.isUsingDockerCompose()
+	return confOptsObj.UsingDockerCompose()
 }
 
 func load(file string) (Config, error) {

@@ -8,10 +8,10 @@ import (
 type instrumentedConfigOptions struct{}
 
 var (
-	configFilename       = "server.yaml"
-	isUsingDockerCompose = true
-	testServerId         = "test-server-id"
-	configLeader         = `server_mode: leader
+	configFilename     = "server.yaml"
+	UsingDockerCompose = true
+	testServerId       = "test-server-id"
+	configLeader       = `server_mode: leader
 service_port: 50051
 docker:
   frontend:
@@ -45,15 +45,15 @@ followers: []
 `
 )
 
-func (i *instrumentedConfigOptions) getConfigFilename() string {
+func (i *instrumentedConfigOptions) GetConfigFilename() string {
 	return configFilename
 }
 
-func (i *instrumentedConfigOptions) isUsingDockerCompose() bool {
-	return isUsingDockerCompose
+func (i *instrumentedConfigOptions) UsingDockerCompose() bool {
+	return UsingDockerCompose
 }
 
-func (i *instrumentedConfigOptions) newServerID() string {
+func (i *instrumentedConfigOptions) NewServerID() string {
 	return testServerId
 }
 
@@ -350,13 +350,13 @@ func TestGetIsUsingDockerCompose(t *testing.T) {
 	}
 
 	configIsUsingDockerCompose := IsUsingDockerCompose()
-	if configIsUsingDockerCompose != isUsingDockerCompose {
-		t.Errorf("Expected configIsUsingDockerCompose to be %v, got %v", isUsingDockerCompose, configIsUsingDockerCompose)
+	if configIsUsingDockerCompose != UsingDockerCompose {
+		t.Errorf("Expected configIsUsingDockerCompose to be %v, got %v", UsingDockerCompose, configIsUsingDockerCompose)
 	}
 }
 
 func TestDefaultConfigNewServerID(t *testing.T) {
-	result := confOptsObj.newServerID()
+	result := confOptsObj.NewServerID()
 
 	if result == "" {
 		t.Errorf("Expected server ID to be non-empty, got '%v'", result)
@@ -364,7 +364,7 @@ func TestDefaultConfigNewServerID(t *testing.T) {
 }
 
 func TestDefaultConfigGetConfigFilename(t *testing.T) {
-	result := confOptsObj.getConfigFilename()
+	result := confOptsObj.GetConfigFilename()
 
 	if result == "" {
 		t.Errorf("Expected config filename to be nonempty, got '%v'", result)
@@ -372,10 +372,10 @@ func TestDefaultConfigGetConfigFilename(t *testing.T) {
 }
 
 func TestDefaultConfigIsUsingDockerCompose(t *testing.T) {
-	result := confOptsObj.isUsingDockerCompose()
+	result := confOptsObj.UsingDockerCompose()
 
 	// I guess we're simply seeing that the function is executable and will return a boolean
 	if !(result || !result) {
-		t.Errorf("Expected isUsingDockerCompose to be true or false, got %v", result)
+		t.Errorf("Expected UsingDockerCompose to be true or false, got %v", result)
 	}
 }
