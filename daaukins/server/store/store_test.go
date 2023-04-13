@@ -257,7 +257,7 @@ func TestGetChallenge(t *testing.T) {
 	tests := []test{
 		{
 			name:      "should get challenge1",
-			challenge: "challenge1",
+			challenge: "id1",
 			predicate: func(t *testing.T, c *ChallengeTemplate) {
 				if c.Name != "challenge1" {
 					t.Errorf("expected challenge1, got %s", c.Name)
@@ -275,7 +275,7 @@ func TestGetChallenge(t *testing.T) {
 		},
 		{
 			name:      "should get challenge2",
-			challenge: "challenge2",
+			challenge: "id2",
 			predicate: func(t *testing.T, c *ChallengeTemplate) {
 				if c.Name != "challenge2" {
 					t.Errorf("expected challenge2, got %s", c.Name)

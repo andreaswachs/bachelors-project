@@ -67,14 +67,14 @@ func Initialize() error {
 	return nil
 }
 
-func GetChallenge(name string) (ChallengeTemplate, error) {
+func GetChallenge(id string) (ChallengeTemplate, error) {
 	for _, c := range store.challenges {
-		if c.Name == name {
+		if c.Id == id {
 			return c, nil
 		}
 	}
 
-	return ChallengeTemplate{}, fmt.Errorf("%w: %s", ErrorChallengeNotFound, name)
+	return ChallengeTemplate{}, fmt.Errorf("%w: %s", ErrorChallengeNotFound, id)
 }
 
 func ChallengeExists(name string) bool {
