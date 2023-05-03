@@ -31,9 +31,9 @@ pull-images:
 
 .PHONY: install-tools
 install-tools:
-	sudo apt install docker
-	sudo apt install docker-compose
+	sudo apt install docker docker-compose -y
 	sudo ufw enable
+	sudo ufw allow ssh
 	sudo ufw allow 50052/tcp
 	sudo ufw allow 40000:50000/tcp
 
