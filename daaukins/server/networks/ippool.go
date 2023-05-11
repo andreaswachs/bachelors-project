@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
@@ -19,6 +20,7 @@ const (
 var (
 	allowedLeftmostOctets = []int{172, 10}
 	ipBank                *IPPool
+	ipPoolArbiter         = &sync.Mutex{}
 
 	ErrEmptySubnetPool = fmt.Errorf("no more subnets available")
 )
@@ -31,6 +33,8 @@ type IPPool struct {
 
 func ipPool() *IPPool {
 	if ipBank == nil {
+		ipPoolArbiter.Lock()
+		defer ipPoolArbiter.Unlock()
 		ipBank = initIPPool()
 
 		if config.IsUsingDockerCompose() {
@@ -123,6 +127,9 @@ func (ipbank *IPPool) GetUnusedSubnet() (string, error) {
 		}
 
 		ip := fmt.Sprintf("%d.%d.%d.0/24", leftmostOctet, octet1, octet2)
+
+		ipPoolArbiter.Lock()
+		defer ipPoolArbiter.Unlock()
 
 		if _, ok := ipbank.subnetsInUse[ip]; !ok {
 			ipbank.subnetsInUse[ip] = true
