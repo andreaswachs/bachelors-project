@@ -4,7 +4,7 @@ RUN apk add --no-cache python3
 
 FROM base as compose
 
-EXPOSE 8080
+EXPOSE 80
 WORKDIR /app
 
 RUN touch flag.txt
