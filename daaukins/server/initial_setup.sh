@@ -47,5 +47,4 @@ chown daaukins:daaukins /home/daaukins/.ssh
 sudo cp /root/.ssh/authorized_keys /home/daaukins/.ssh/authorized_keys
 sudo chown -R daaukins:daaukins /home/daaukins/.ssh
 sudo chmod 600 /home/daaukins/.ssh/authorized_keys
-cp ~/.ssh/authori
 
