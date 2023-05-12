@@ -129,7 +129,8 @@ func HasCapacity(path string) (bool, error) {
 		return false, nil
 	}
 
-	totalMemoryRequired := 2 * 1024 // 2GB for the frontend
+	// Initializing total memory required including 2gb for the frontend
+	totalMemoryRequired := sizes.GigabytesAs[int](2, sizes.Megabyte)
 
 	for _, labChallenge := range labDTO.Challenges {
 		storedChallenge, err := store.GetChallenge(labChallenge.Challenge)
