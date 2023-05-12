@@ -24,6 +24,8 @@ You should find a `server` folder in user `daaukins` home folder.
 This is a symbolic link to the embedded source folder in the repository `daaukins/server`.
 
 You can configure the server with the `server.yaml` file.
+Servers can have the role of "leader" or "follower". The leader server has many followers, the followers can't have no followers.
+The leader must have all followers configured.
 
 You run the server by executing `make dev` in the terminal.
 There is no way of running the server in a production-ready manner.
