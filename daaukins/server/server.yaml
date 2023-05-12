@@ -9,8 +9,9 @@ docker:
     image: "networkboot/dhcpd:1.2.0"
   dns:
     image: "coredns/coredns:1.10.0"
-followers:
-  []
-  #   - name: example_follower
-  #     address: 0.0.0.0
-  #     port: 50052 
+followers: []
+
+# Example of follower entry:
+#   - name: example_follower
+#     address: 0.0.0.0
+#     port: 50052 
