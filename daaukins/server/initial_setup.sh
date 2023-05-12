@@ -26,6 +26,10 @@ sudo ufw allow 40000:50000/tcp
 git clone https://github.com/andreaswachs/bachelors-project.git /home/daaukins/bachelors-project
 ln -s /home/daaukins/bachelors-project/daaukins/server /home/daaukins/server
 
+# Transfer ownership of the repo to the daaukins user
+sudo chown -R daaukins:daaukins /home/daaukins/bachelors-project
+
 # Pull docker containers mentioned in yaml files
 cd /home/daaukins/server
 make pull-images
+
