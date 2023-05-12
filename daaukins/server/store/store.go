@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	store *Store
+	store  *Store
+	stConf storeConfig = storeConf{}
 
 	ErrorChallengeNotFound       = fmt.Errorf("challenge not found")
 	ErrorChallengeNameEmpty      = fmt.Errorf("challenge name is empty")
@@ -38,42 +39,42 @@ type storeDTO struct {
 	Challenges []ChallengeTemplate `yaml:"challenges"`
 }
 
-func init() {
+type storeConfig interface {
+	storeConfigFile() string
+}
+
+type storeConf struct{}
+
+func (s storeConf) storeConfigFile() string {
+	filename := os.Getenv("DAAUKINS_STORE_CONFIG")
+
+	if filename == "" {
+		filename = "store.yaml"
+	}
+
+	return filename
+}
+
+func Initialize() error {
 	store = &Store{
 		challenges: make(map[string]ChallengeTemplate),
 	}
 
-	if err := Load("store.yaml"); err != nil {
-		log.Err(err).Msg("failed to load store from default path \"store.yaml\"")
-	}
-}
-
-func Load(path string) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
+	if err := load(stConf.storeConfigFile()); err != nil {
 		return err
 	}
-
-	dto, err := loadStore(data)
-	if err != nil {
-		return err
-	}
-
-	if err = validateStoreDTO(dto); err != nil {
-		return err
-	}
-
-	transferChallenges(dto)
 
 	return nil
 }
 
-func GetChallenge(name string) (ChallengeTemplate, error) {
-	if _, ok := store.challenges[name]; !ok {
-		return ChallengeTemplate{}, fmt.Errorf("%w: %s", ErrorChallengeNotFound, name)
+func GetChallenge(id string) (ChallengeTemplate, error) {
+	for _, c := range store.challenges {
+		if c.Id == id {
+			return c, nil
+		}
 	}
 
-	return store.challenges[name], nil
+	return ChallengeTemplate{}, fmt.Errorf("%w: %s", ErrorChallengeNotFound, id)
 }
 
 func ChallengeExists(name string) bool {
@@ -105,6 +106,10 @@ func transferChallenges(dto *storeDTO) {
 		go func(c ChallengeTemplate) {
 			defer wg.Done()
 
+			if flag.Lookup("test.v") != nil {
+				return
+			}
+
 			images, err := virtual.DockerClient().ListImages(docker.ListImagesOptions{All: true})
 			if err != nil {
 				log.Err(err).Msg("failed to list images on the server")
@@ -118,10 +123,6 @@ func transferChallenges(dto *storeDTO) {
 						return
 					}
 				}
-			}
-
-			if flag.Lookup("test.v") != nil {
-				return
 			}
 
 			err = virtual.DockerClient().PullImage(docker.PullImageOptions{
@@ -160,6 +161,26 @@ func validateStoreDTO(dto *storeDTO) error {
 			return ErrorChallengeNegativeMemory
 		}
 	}
+
+	return nil
+}
+
+func load(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	dto, err := loadStore(data)
+	if err != nil {
+		return err
+	}
+
+	if err = validateStoreDTO(dto); err != nil {
+		return err
+	}
+
+	transferChallenges(dto)
 
 	return nil
 }

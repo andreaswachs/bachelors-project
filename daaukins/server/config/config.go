@@ -3,16 +3,17 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/utils"
-	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 )
 
 var (
-	config   Config
-	serverId string
+	config      Config
+	serverId    string
+	confOptsObj Configure = &defaultConfigOptions{}
 )
 
 type FollowerConfig struct {
@@ -38,29 +39,54 @@ type Config struct {
 	Followers   []FollowerConfig `yaml:"followers"`
 }
 
+type Configure interface {
+	GetConfigFilename() string
+	UsingDockerCompose() bool
+	NewServerID() string
+}
+
+type defaultConfigOptions struct{}
+
+func (d *defaultConfigOptions) GetConfigFilename() string {
+	filename := os.Getenv("DAAUKINS_SERVER_CONFIG")
+	if filename == "" {
+		return "server.yaml"
+	}
+
+	return filename
+}
+
+func (d *defaultConfigOptions) UsingDockerCompose() bool {
+	return os.Getenv("DAAUKINS_USING_DOCKER_COMPOSE") != ""
+}
+
+func (d *defaultConfigOptions) NewServerID() string {
+	return utils.RandomShortName()
+}
+
 type InitializeConfigOptions struct {
 	ConfigFile string
 }
 
-func Initialize(options *InitializeConfigOptions) {
-	configFilename := "server.yaml"
+// InitializeWith initializes the config with the given configurer.This uses the dependency injection pattern, in that users can provide their own configurer to load the config from a different source.
+func InitializeWith(configurer Configure) error {
+	confOptsObj = configurer
+	return Initialize()
+}
 
-	if options != nil && options.ConfigFile != "" {
-		configFilename = options.ConfigFile
-	}
-
+func Initialize() error {
 	// Load the configuration from the config file
-	configBuffer, err := load(configFilename)
+	configBuffer, err := load(confOptsObj.GetConfigFilename())
 	if err != nil {
-		log.Panic().Err(err).Msg("Failed to load config file")
+		return err
 	}
 
 	config = configBuffer
 
 	// Set the server id
-	serverId = utils.RandomShortName()
+	serverId = confOptsObj.NewServerID()
 
-	log.Info().Msgf("Loaded config: %+v", config)
+	return nil
 }
 
 func GetFollowers() []FollowerConfig {
@@ -84,7 +110,7 @@ func GetDockerConfig() DockerConfig {
 }
 
 func IsUsingDockerCompose() bool {
-	return os.Getenv("DOCKER_COMPOSE") != ""
+	return confOptsObj.UsingDockerCompose()
 }
 
 func load(file string) (Config, error) {
@@ -97,6 +123,10 @@ func load(file string) (Config, error) {
 }
 
 func parse(input []byte) (Config, error) {
+	if len(input) == 0 {
+		return Config{}, fmt.Errorf("config file is empty")
+	}
+
 	var config Config
 	err := yaml.Unmarshal(input, &config)
 

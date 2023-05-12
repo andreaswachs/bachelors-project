@@ -6,12 +6,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: on-failure:5
     expose:
       - 50052
     ports:
       - 50052:50051
     environment:
-      - DOCKER_COMPOSE=hell_yeah
+      - DAAUKINS_USING_DOCKER_COMPOSE=hell_yeah
+      - DAAUKINS_SERVER_CONFIG=server.yaml
+      - DAAUKINS_STORE_CONFIG=store.yaml
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./server.yaml:/app/server.yaml:ro

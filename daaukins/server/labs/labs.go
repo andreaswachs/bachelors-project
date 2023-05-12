@@ -100,6 +100,9 @@ func All() []*lab {
 	labsBuffer := make([]*lab, 0)
 
 	for id, aLab := range labs {
+		// For some reason, the latest lab is inserted by its ID as key,
+		// but also duplicated with another key pointing to it
+		// Therefore, we check if the key (lab id) is equal to the lab structs ID field
 		if id == aLab.id {
 			labsBuffer = append(labsBuffer, aLab)
 		}
@@ -126,7 +129,8 @@ func HasCapacity(path string) (bool, error) {
 		return false, nil
 	}
 
-	totalMemoryRequired := 2 * 1024 // 2GB for the frontend
+	// Initializing total memory required including 2gb for the frontend
+	totalMemoryRequired := sizes.GigabytesAs[int](2, sizes.Megabyte)
 
 	for _, labChallenge := range labDTO.Challenges {
 		storedChallenge, err := store.GetChallenge(labChallenge.Challenge)
@@ -168,7 +172,6 @@ func Provision(path string) (lab, error) {
 	network, err := networks.Provision(networks.ProvisionNetworkOptions{
 		LabID: labId,
 	})
-
 	if err != nil {
 		return lab{}, err
 	}
@@ -409,7 +412,8 @@ func (l *lab) Start() error {
 					},
 				},
 			},
-		}})
+		},
+	})
 	if err != nil {
 		log.Error().
 			Err(err).

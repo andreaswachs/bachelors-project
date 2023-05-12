@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/andreaswachs/bachelors-project/daaukins/server/config"
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
@@ -19,6 +20,7 @@ const (
 var (
 	allowedLeftmostOctets = []int{172, 10}
 	ipBank                *IPPool
+	ipPoolArbiter         = &sync.Mutex{}
 
 	ErrEmptySubnetPool = fmt.Errorf("no more subnets available")
 )
@@ -31,6 +33,8 @@ type IPPool struct {
 
 func ipPool() *IPPool {
 	if ipBank == nil {
+		ipPoolArbiter.Lock()
+		defer ipPoolArbiter.Unlock()
 		ipBank = initIPPool()
 
 		if config.IsUsingDockerCompose() {
@@ -111,10 +115,21 @@ func (ipbank *IPPool) GetFreeIP(subnet string) (string, error) {
 func (ipbank *IPPool) GetUnusedSubnet() (string, error) {
 	for safety := 0; safety < 10000; safety++ {
 		leftmostOctet := getRandomLeftmostOctet()
-		ip := fmt.Sprintf("%d.%d.%d.0/24",
-			leftmostOctet,
-			getRandomOctet(leftmostOctet),
-			getRandomOctet(-1)) // Yeah this is a hack, but it works..??
+
+		octet1, err := getRandomOctet(leftmostOctet)
+		if err != nil {
+			continue
+		}
+
+		octet2, err := getRandomOctet(-1)
+		if err != nil {
+			continue
+		}
+
+		ip := fmt.Sprintf("%d.%d.%d.0/24", leftmostOctet, octet1, octet2)
+
+		ipPoolArbiter.Lock()
+		defer ipPoolArbiter.Unlock()
 
 		if _, ok := ipbank.subnetsInUse[ip]; !ok {
 			ipbank.subnetsInUse[ip] = true
@@ -126,40 +141,40 @@ func (ipbank *IPPool) GetUnusedSubnet() (string, error) {
 }
 
 func getRandomLeftmostOctet() int {
-	index := int(rand.Int31n(int32(len(allowedLeftmostOctets) - 1)))
+	index := int(rand.Int31n(int32(len(allowedLeftmostOctets))))
 	return allowedLeftmostOctets[index]
 }
 
-func getRandomOctet(leftmostOctet int) int {
+func getRandomOctet(leftmostOctet int) (int, error) {
 	switch leftmostOctet {
 	case 172:
 		// In the case of leftmostOctet being 172, ensure that we don't generate
 		// a random octet that will collide with the bridge network's second octet
 		bridgeNetwork, err := virtual.DockerClient().NetworkInfo("bridge")
 		if err != nil {
-			log.Panic().Msgf("failed to get bridge network info: %+v", err)
+			return 0, err
 		}
 
 		bridgeSubnet := bridgeNetwork.IPAM.Config[0].Subnet
 		bridgeOctets := strings.Split(bridgeSubnet, ".")
 		secondOctet, err := strconv.Atoi(bridgeOctets[1])
 		if err != nil {
-			log.Panic().Msgf("failed to parse bridge network subnet: %+v", err)
+			return 0, err
 		}
 
 		for safety := 0; safety < 10000; safety++ {
 			octet := rand.Intn(16) + 16
 			if octet != secondOctet {
-				return octet
+				return octet, nil
 			}
 		}
 
-		log.Panic().Msg("failed to generate random octet that does not collide with bridge network")
+		return 0, fmt.Errorf("failed to generate random octet that does not collide with bridge network")
 	case 10:
-		return rand.Intn(255)
+		return rand.Intn(255), nil
 	}
 
-	return rand.Intn(octetMaximum)
+	return rand.Intn(octetMaximum), nil
 }
 
 func generateNewSubnetList() []int {

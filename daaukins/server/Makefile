@@ -1,22 +1,16 @@
+.PHONY: setup
 setup:
 	./bin/setup.sh
 
+.PHONY: clean-docker
 clean-docker:
 	./bin/clean-docker.sh
 
-
-grpc-debug:
-	evans --path service --proto service.proto --host localhost
-
-grpc-debug-docker:
-	evans --path service --proto service.proto --host localhost --port 50052
+.PHONY: dev
 dev:
-	go build
-	./server
-
-dev-docker:
 	docker-compose up --build
 
+.PHONY: install-proto
 install-proto:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
@@ -24,6 +18,7 @@ install-proto:
 	@echo "Ensure that you have ~/go/bin located in your PATH"
 	@echo ""
 
+.PHONY: pull-images
 pull-images:
 	find . -type f -name "*.yaml" \
 		| xargs cat \
