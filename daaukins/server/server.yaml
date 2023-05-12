@@ -1,5 +1,5 @@
 server_mode: leader
-service_port: 50051
+service_port: 50052
 docker:
   frontend:
     image: "andreaswachs/kali-docker:core"
@@ -9,7 +9,8 @@ docker:
     image: "networkboot/dhcpd:1.2.0"
   dns:
     image: "coredns/coredns:1.10.0"
-followers: []
-  #   - name: FirstFollower
+followers:
+  []
+  #   - name: example_follower
   #     address: 0.0.0.0
   #     port: 50052 
