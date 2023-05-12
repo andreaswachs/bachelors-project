@@ -6,6 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: on-failure:5
     expose:
       - 50052
     ports:
