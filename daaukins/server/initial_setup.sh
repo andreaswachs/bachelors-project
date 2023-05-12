@@ -22,5 +22,10 @@ sudo ufw allow ssh
 sudo ufw allow 50052/tcp
 sudo ufw allow 40000:50000/tcp
 
+# Checkout the project
+git clone https://github.com/andreaswachs/bachelors-project.git /home/daaukins/
+ln -s /home/daaukins/bachelors-project/daaukins/server /home/daaukins/server
+
 # Pull docker containers mentioned in yaml files
+cd /home/daaukins/server
 make pull-images
