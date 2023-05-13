@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
 block="################################################################################"
-echo="printf $block\n%s\n$block\n\n"
+echo="printf \n$block\n%s\n$block\n\n"
 
 $echo "This script assumes that it is ran on a newly created ubuntu VM"
 
@@ -27,7 +27,7 @@ $echo "Enabling ufw firewall and allows daaukins ports. You might need to input 
 ufw enable
 ufw allow ssh
 ufw allow 50052/tcp
-ufw allow 40000:50000/tcp
+ufw allow 40000:40100/tcp
 
 # Checkout the project
 $echo "Downloading Daaukins source code"
