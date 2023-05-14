@@ -34,7 +34,7 @@ func GetAvailableMemory() (int, error) {
 	}
 
 	// using an int for memFree means that available system memory may not exceed
-	// roughly ~2.1TB, as that would produce wrong calculations (int32 max value = 2^31),
+	// roughly ~2.1TB, as that would produce wrong calculations (int32 max value = 2^31-1),
 	// the unit is kb and thus the total max value translates to 2.1TB
 	var memFree int
 
