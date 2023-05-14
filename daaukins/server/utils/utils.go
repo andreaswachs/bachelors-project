@@ -33,6 +33,8 @@ func GetAvailableMemory() (int, error) {
 		return 0, err
 	}
 
+	// using an int for memFree limits system memory for having sound calculations
+	// to roughly ~2200 TB
 	var memFree int
 
 	// Find the MemAvailable line
