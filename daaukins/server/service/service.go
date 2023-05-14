@@ -245,10 +245,10 @@ func (s *Server) HaveCapacity(ctx context.Context, request *service.HaveCapacity
 	log.Debug().Msg("Checking if we have capacity")
 	return HaveCapacity(ctx, request)
 }
-func (s *Server) ScheduleLab(ctx context.Context, request *service.ScheduleLabRequest) (*service.ScheduleLabResponse, error) {
+func (s *Server) CreateLab(ctx context.Context, request *service.CreateLabRequest) (*service.CreateLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {
 		// Ask all follower what their capacity is and compare them including our own capacity.
-		// Schedule the lab on the follower with the most capacity (this instance included)
+		// Create the lab on the follower with the most capacity (this instance included)
 
 		wg := sync.WaitGroup{}
 		responses := make([]*askHasCapacityResponse, 0)
@@ -335,15 +335,15 @@ func (s *Server) ScheduleLab(ctx context.Context, request *service.ScheduleLabRe
 
 		if bestFollower.isSelf {
 			log.Info().Msg("Scheduling lab on leader")
-			return ScheduleLab(ctx, request)
+			return CreateLab(ctx, request)
 		}
 
 		log.Info().Msgf("Scheduling lab on follower %s:%d", bestFollower.follower.config.Address, bestFollower.follower.config.Port)
-		return bestFollower.follower.client.ScheduleLab(ctx, request)
+		return bestFollower.follower.client.CreateLab(ctx, request)
 	}
 
-	// In this case, this server instance is a folloer and we'll just schedule the lab on ourself
-	return ScheduleLab(ctx, request)
+	// In this case, this server instance is a folloer and we'll just create the lab on ourself
+	return CreateLab(ctx, request)
 }
 func (s *Server) GetLab(ctx context.Context, request *service.GetLabRequest) (*service.GetLabResponse, error) {
 	if config.GetServerMode() == config.ModeLeader {

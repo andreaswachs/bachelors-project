@@ -2,9 +2,9 @@ package api
 
 import service "github.com/andreaswachs/daaukins-service"
 
-func ScheduleLab(lab, serverId string) (*service.ScheduleLabResponse, error) {
+func CreateLab(lab, serverId string) (*service.CreateLabResponse, error) {
 	ctx, cancelFunc := longLivedCtx()
 	defer cancelFunc()
 
-	return getClient().ScheduleLab(ctx, &service.ScheduleLabRequest{Lab: lab, ServerId: serverId})
+	return getClient().CreateLab(ctx, &service.CreateLabRequest{Lab: lab, ServerId: serverId})
 }
