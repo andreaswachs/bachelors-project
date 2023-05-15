@@ -6,7 +6,7 @@ This repository contains resources used for my bachelor project.
 
 Daaukins is a vertical slice implementation of [Haaukins](https://github.com/aau-network-security/haaukins) that attemts to explore the possibility having a working cyber security platform while being horizontally scalable.
 
-The Daaukins server is only runnable on linux due to linux only support for macvlan networks.
+The Daaukins server is only functional on linux due to linux only support for macvlan networks.
 
 Requirements for local development and use of the daaukins client `dkn`:
 
