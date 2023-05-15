@@ -30,4 +30,4 @@ Below is a list of repositories containing the source code for select services u
 
 - [forward-proxy](https://github.com/andreaswachs/forward-proxy) is a Dockerized service to forward UDP and TCP traffic between remote or local hosts
 - [kali-docker](https://github.com/andreaswachs/kali-docker) is a Kali Linux desktop environment that is dockerized and used for frontends§
-- [vuln-service](https://github.com/andreaswachs/vuln-service) is a placeholder for a vulnerable service. It hosts a directory listing over HTTP on port 80, with a file called "flag.txt" with a randomly generated "daaukins" flag.
+- [vuln-server](https://github.com/andreaswachs/vuln-server) is a placeholder for a vulnerable server. It hosts a directory listing over HTTP on port 80, with a file called "flag.txt" with a randomly generated "daaukins" flag.
