@@ -1,5 +1,7 @@
 github.com/andreaswachs/daaukins-service v0.2.1 h1:5wk/ql8h9TPfzSIaYZADP1FkWTWyaD/9KUbLa4Tug4I=
 github.com/andreaswachs/daaukins-service v0.2.1/go.mod h1:/pQLycFO2XFcQQ18uEKECfPr9SN4K8FtKsJp111NWgY=
+github.com/andreaswachs/daaukins-service v0.3.0 h1:+w2nEUF8Ysb94YFAFR1vEqv17CP/3Yi+7hk/xGGHpy4=
+github.com/andreaswachs/daaukins-service v0.3.0/go.mod h1:/pQLycFO2XFcQQ18uEKECfPr9SN4K8FtKsJp111NWgY=
 github.com/cpuguy83/go-md2man/v2 v2.0.2/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

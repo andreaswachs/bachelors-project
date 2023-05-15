@@ -1,6 +1,0 @@
-server_mode: leader
-service_port: 50051
-followers:
-  - address: leader-2
-    port: 50052
-    name: Leader 2

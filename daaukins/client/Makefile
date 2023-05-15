@@ -1,3 +1,5 @@
+DKN_INSTALL_DIR ?= ~/opt/bin
+
 .PHONY: build install
 
 build:
@@ -6,6 +8,6 @@ build:
 
 install: build
 	@echo "Installing dkn..."
-	@mkdir -p ~/opt/bin
-	@cp dkn ~/opt/bin
-	@echo "Ensure that ~/opt/bin is in your PATH."
+	@mkdir -p ${DKN_INSTALL_DIR}
+	@cp dkn ${DKN_INSTALL_DIR}
+	@echo "Ensure that ${DKN_INSTALL_DIR} is in your PATH."

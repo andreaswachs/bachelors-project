@@ -13,9 +13,9 @@ import (
 	"github.com/andreaswachs/bachelors-project/daaukins/server/virtual"
 )
 
-var (
-	hostPortsInUse = make(map[int]bool)
-)
+const hostPortsAllowed = 100
+
+var hostPortsInUse = make(map[int]bool)
 
 type Network struct {
 	network *docker.Network
@@ -44,7 +44,7 @@ func Provision(conf ProvisionNetworkOptions) (*Network, error) {
 
 func GetFreeHostPort() (int, error) {
 	for {
-		port := 40000 + rand.Intn(10000)
+		port := 40000 + rand.Intn(hostPortsAllowed)
 
 		if _, ok := hostPortsInUse[port]; !ok {
 			hostPortsInUse[port] = true

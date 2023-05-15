@@ -17,11 +17,11 @@ var (
 	file string
 )
 
-// scheduleCmd represents the schedule command
-var scheduleCmd = &cobra.Command{
-	Use:   "schedule",
-	Short: "Schedule a lab",
-	Long:  `Schedule a lab on a Daaukins server (or one of its followers)`,
+// createCmd represents the create command
+var createCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Create a lab",
+	Long:  `Create a lab on a Daaukins server (or one of its followers)`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if file == "" {
 			cmd.Help()
@@ -30,13 +30,13 @@ var scheduleCmd = &cobra.Command{
 
 		labConfig := getLabsFileContent()
 
-		response, err := api.ScheduleLab(labConfig, serverId)
+		response, err := api.CreateLab(labConfig, serverId)
 		if err != nil {
 			fmt.Println("Error scheduling lab:", err)
 			os.Exit(1)
 		}
 
-		fmt.Println("Lab scheduled successfully with id:", response.Id)
+		fmt.Println("Lab created successfully with id:", response.Id)
 	},
 }
 
@@ -76,16 +76,16 @@ func getLabsFileContent() string {
 }
 
 func init() {
-	rootCmd.AddCommand(scheduleCmd)
+	rootCmd.AddCommand(createCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// scheduleCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// createCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	scheduleCmd.Flags().StringVarP(&file, "file", "f", "", "Specify the lab configuration file")
-	scheduleCmd.Flags().StringVarP(&serverId, "serverid", "s", "", "Specify the server to schedule the lab on")
+	createCmd.Flags().StringVarP(&file, "file", "f", "", "Specify the lab configuration file")
+	createCmd.Flags().StringVarP(&serverId, "serverid", "s", "", "Specify the server to create the lab on")
 }

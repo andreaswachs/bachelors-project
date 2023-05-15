@@ -42,7 +42,7 @@ func HaveCapacity(context context.Context, request *service.HaveCapacityRequest)
 	return response, nil
 }
 
-func ScheduleLab(context context.Context, request *service.ScheduleLabRequest) (*service.ScheduleLabResponse, error) {
+func CreateLab(context context.Context, request *service.CreateLabRequest) (*service.CreateLabResponse, error) {
 	if request.Lab == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "lab is empty")
 	}
@@ -61,7 +61,7 @@ func ScheduleLab(context context.Context, request *service.ScheduleLabRequest) (
 		return nil, status.Errorf(codes.Internal, "failed to start lab: %v", err)
 	}
 
-	return &service.ScheduleLabResponse{Id: lab.GetId()}, nil
+	return &service.CreateLabResponse{Id: lab.GetId()}, nil
 
 }
 

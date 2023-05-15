@@ -1,7 +1,3 @@
-.PHONY: setup
-setup:
-	./bin/setup.sh
-
 .PHONY: clean-docker
 clean-docker:
 	./bin/clean-docker.sh
