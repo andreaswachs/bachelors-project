@@ -24,9 +24,10 @@ The client runs on the machine that is meant to manage the Daaukins service.
 
 Locate the `daaukins/client` subfolder to see more.
 
-## Docker containers adjusted to Daaukins use
+## Auxiliary repositories with project dependencies
 
 Below is a list of repositories containing the source code for select services used in Daaukins.
+
 - [daaukins-service](https://github.com/andreaswachs/daaukins-service) is a repository containing the gRPC interface files that is used for both the Daaukins server and client. Golang package documentation can be found [here](https://pkg.go.dev/github.com/andreaswachs/daaukins-service)
 - [forward-proxy](https://github.com/andreaswachs/forward-proxy) is a Dockerized service to forward UDP and TCP traffic between remote or local hosts
 - [kali-docker](https://github.com/andreaswachs/kali-docker) is a Kali Linux desktop environment that is dockerized and used for frontends§
