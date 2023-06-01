@@ -5,7 +5,7 @@
 Complete server setup and install: to setup dependencies, a daaukins user and downloading source files execute the following command as the root user on a freshly installed Ubuntu server:
 
 ```sh
-curl -sL https://t.ly/R48V | sh
+curl -sL https://raw.githubusercontent.com/andreaswachs/bachelors-project/main/daaukins/server/initial_setup.sh | sh
 ```
 
 You should find a `server` folder in user `daaukins` home folder.
