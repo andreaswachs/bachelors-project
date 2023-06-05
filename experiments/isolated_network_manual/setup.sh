@@ -1,4 +1,4 @@
-#1/bin/bash
+#!/bin/bash
 
 IP_PREFIX=172.16.86
 DNS_IP=$IP_PREFIX.3
@@ -37,7 +37,7 @@ docker run -dit --rm --init \
   --name isolated_service_1 \
   --ip ${IP_PREFIX}.30 \
   --dns ${DNS_IP} \
-  alpine:latest
+  andreaswachs/placeholder_vuln_server:latest
 
 docker run -dit --rm --init \
   --net isolated \
